@@ -1,0 +1,7 @@
+name: diag
+on: [workflow_dispatch]
+jobs:
+  plain:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "ランナーに到達した"
