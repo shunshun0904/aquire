@@ -1,0 +1,3521 @@
+<title>ACQUIRE — ホテルチェーン買収ゲーム</title>
+<style>
+/* ==========================================================================
+   ACQUIRE — スタイル & アニメーション
+   ========================================================================== */
+
+/* --- リセット ------------------------------------------------------------ */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+button { font: inherit; color: inherit; }
+
+:root {
+  --bg-0: #0a0e18;
+  --bg-1: #111827;
+  --bg-2: #172033;
+  --bg-3: #1e2a42;
+  --line: rgba(255, 255, 255, .09);
+  --line-strong: rgba(255, 255, 255, .18);
+  --text: #e8edf7;
+  --text-dim: #97a3bb;
+  --text-faint: #5d6a84;
+  --gold: #e9c46a;
+  --gold-deep: #b98f2d;
+  --good: #4ade80;
+  --bad: #f87171;
+  --radius: 14px;
+  --cell-gap: 3px;
+  --ease-out: cubic-bezier(.22, 1, .36, 1);
+  --ease-back: cubic-bezier(.34, 1.56, .64, 1);
+}
+
+body {
+  background:
+    radial-gradient(1200px 700px at 15% -10%, rgba(59, 125, 216, .12), transparent),
+    radial-gradient(1000px 600px at 110% 10%, rgba(233, 196, 106, .07), transparent),
+    radial-gradient(900px 900px at 50% 120%, rgba(23, 182, 196, .06), transparent),
+    var(--bg-0);
+  color: var(--text);
+  font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP",
+               system-ui, -apple-system, "Segoe UI", sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 背景の淡いグリッド */
+body::before {
+  content: "";
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.022) 1px, transparent 1px);
+  background-size: 46px 46px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+#app { position: relative; z-index: 1; max-width: 1560px; margin: 0 auto; padding: 14px clamp(10px, 2vw, 22px) 20px; }
+
+/* --- トップバー ---------------------------------------------------------- */
+.topbar {
+  display: flex; align-items: center; gap: 18px;
+  padding: 12px 16px; margin-bottom: 16px;
+  background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.015));
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  backdrop-filter: blur(8px);
+  animation: dropIn .6s var(--ease-out) both;
+}
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand-mark {
+  width: 42px; height: 42px; display: grid; place-items: center;
+  border-radius: 11px; font-weight: 800; font-size: 22px; color: #1a1206;
+  background: linear-gradient(145deg, #f6d98b, var(--gold-deep));
+  box-shadow: 0 6px 18px rgba(233,196,106,.28), inset 0 1px 0 rgba(255,255,255,.6);
+  animation: markPulse 5s ease-in-out infinite;
+}
+@keyframes markPulse {
+  0%, 100% { box-shadow: 0 6px 18px rgba(233,196,106,.22), inset 0 1px 0 rgba(255,255,255,.6); }
+  50%      { box-shadow: 0 6px 26px rgba(233,196,106,.45), inset 0 1px 0 rgba(255,255,255,.6); }
+}
+.brand-text h1 { margin: 0; font-size: 19px; letter-spacing: .22em; font-weight: 700; }
+.brand-text p { margin: 1px 0 0; font-size: 11px; color: var(--text-faint); letter-spacing: .08em; }
+
+.status { flex: 1; min-width: 0; text-align: center; }
+.status-turn {
+  font-size: 16px; font-weight: 700; letter-spacing: .04em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.status-phase { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+.status.flash .status-turn { animation: turnFlash .8s var(--ease-out); }
+@keyframes turnFlash {
+  0%   { transform: translateY(8px) scale(.96); opacity: 0; filter: blur(3px); }
+  60%  { transform: translateY(0) scale(1.04); opacity: 1; filter: blur(0); }
+  100% { transform: none; }
+}
+
+.topbar-actions { display: flex; align-items: center; gap: 8px; }
+
+.btn {
+  border: 1px solid var(--line-strong); background: rgba(255,255,255,.06);
+  color: var(--text); padding: 9px 16px; border-radius: 10px; cursor: pointer;
+  font-size: 13px; font-weight: 600; letter-spacing: .02em;
+  transition: transform .16s var(--ease-back), background .2s, box-shadow .2s, border-color .2s;
+}
+.btn:hover:not(:disabled) { background: rgba(255,255,255,.12); transform: translateY(-2px); }
+.btn:active:not(:disabled) { transform: translateY(0) scale(.97); }
+.btn:disabled { opacity: .38; cursor: not-allowed; }
+.btn-primary {
+  background: linear-gradient(145deg, #f3d489, var(--gold-deep));
+  border-color: transparent; color: #1a1206;
+  box-shadow: 0 6px 18px rgba(233,196,106,.3);
+}
+.btn-primary:hover:not(:disabled) { box-shadow: 0 10px 26px rgba(233,196,106,.45); }
+.btn-ghost { background: transparent; }
+.icon-btn {
+  width: 36px; height: 36px; border-radius: 10px; cursor: pointer;
+  border: 1px solid var(--line-strong); background: rgba(255,255,255,.05);
+  display: grid; place-items: center; font-size: 15px;
+  transition: background .2s, transform .16s var(--ease-back);
+}
+.icon-btn:hover { background: rgba(255,255,255,.13); transform: translateY(-2px); }
+.icon-btn[aria-pressed="false"] { opacity: .4; }
+
+/* --- レイアウト ---------------------------------------------------------- */
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 372px;
+  gap: 16px;
+  align-items: start;
+}
+.board-col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.side-col { display: flex; flex-direction: column; gap: 14px; }
+
+/* 横並びのときサイドは自前でスクロールさせ、ページ全体の高さを押し上げない */
+@media (min-width: 1181px) {
+  .side-col {
+    position: sticky; top: 14px;
+    /* ヘッダー(約82px) + 上下パディング(34px) を差し引く */
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+    scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.18) transparent;
+    padding-right: 2px;
+  }
+  .side-col::-webkit-scrollbar { width: 6px; }
+  .side-col::-webkit-scrollbar-thumb { background: rgba(255,255,255,.16); border-radius: 3px; }
+}
+
+/* --- ボード -------------------------------------------------------------- */
+.board-shell {
+  position: relative;
+  padding: clamp(8px, 1.4vw, 16px);
+  background: linear-gradient(160deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  box-shadow: 0 24px 60px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.07);
+  animation: dropIn .7s .05s var(--ease-out) both;
+}
+.board-shell.quake { animation: quake .5s ease-in-out; }
+@keyframes quake {
+  0%, 100% { transform: translate(0,0) rotate(0); }
+  15% { transform: translate(-5px, 3px) rotate(-.3deg); }
+  30% { transform: translate(5px, -3px) rotate(.3deg); }
+  45% { transform: translate(-4px, -2px) rotate(-.2deg); }
+  60% { transform: translate(4px, 2px) rotate(.2deg); }
+  80% { transform: translate(-2px, 1px); }
+}
+
+.board-glow {
+  position: absolute; inset: -1px; border-radius: 20px; pointer-events: none;
+  opacity: 0; transition: opacity .5s;
+  background: radial-gradient(400px 260px at var(--gx, 50%) var(--gy, 50%), var(--gc, #fff), transparent 70%);
+  mix-blend-mode: screen;
+}
+.board-glow.on { opacity: .34; }
+
+.board {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: var(--cell-gap);
+  margin: 0 auto;
+}
+/* 横並びレイアウトのときは、手札と操作パネルが画面内に収まる高さに抑える。
+   盤面は 12:9 なので、残り高さから逆算して幅の上限を決め、
+   手札・操作パネルも同じ幅に揃えて中央に置く。 */
+@media (min-width: 1181px) {
+  .board-col {
+    --board-w: clamp(480px, calc((100vh - 400px) * 4 / 3), 880px);
+    max-width: calc(var(--board-w) + 34px);
+    margin: 0 auto;
+  }
+  .board { max-width: var(--board-w); }
+}
+
+.cell {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  border-radius: 7px;
+  border: 1px solid rgba(255,255,255,.07);
+  background: rgba(255,255,255,.028);
+  display: grid; place-items: center;
+  font-size: clamp(8px, .85vw, 12px);
+  font-weight: 600;
+  color: var(--text-faint);
+  letter-spacing: .02em;
+  user-select: none;
+  transition: background .25s, border-color .25s, color .25s, transform .25s var(--ease-back);
+  overflow: hidden;
+}
+.cell::after { /* 光沢 */
+  content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0;
+  background: linear-gradient(150deg, rgba(255,255,255,.32), transparent 55%);
+  transition: opacity .3s;
+}
+
+/* 無所属タイル */
+.cell.lone {
+  background: linear-gradient(150deg, #e7ebf3, #b6c0d3);
+  border-color: rgba(255,255,255,.5);
+  color: #2a3244;
+  box-shadow: 0 3px 10px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.8);
+}
+.cell.lone::after { opacity: 1; }
+
+/* チェーン所属タイル */
+.cell.chained {
+  background: linear-gradient(150deg, var(--c), var(--cd));
+  border-color: rgba(255,255,255,.28);
+  color: rgba(255,255,255,.95);
+  text-shadow: 0 1px 2px rgba(0,0,0,.5);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--c) 45%, transparent),
+              inset 0 1px 0 rgba(255,255,255,.35);
+}
+.cell.chained::after { opacity: .8; }
+.cell.chained .tag { font-size: clamp(7px, .8vw, 11px); font-weight: 800; letter-spacing: .04em; }
+
+/* 安全チェーンの錠マーク */
+.cell.safe-mark::before {
+  content: "";
+  position: absolute; top: 3px; right: 3px; width: 5px; height: 5px;
+  border-radius: 50%; background: rgba(255,255,255,.9);
+  box-shadow: 0 0 6px rgba(255,255,255,.9);
+}
+
+/* 配置可能ハイライト */
+.cell.playable {
+  border-color: rgba(233,196,106,.5);
+  background: rgba(233,196,106,.09);
+  color: var(--gold);
+  cursor: pointer;
+  animation: playablePulse 2.4s ease-in-out infinite;
+}
+@keyframes playablePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(233,196,106,0); }
+  50%      { box-shadow: 0 0 0 3px rgba(233,196,106,.16); }
+}
+.cell.target {
+  transform: scale(1.14); z-index: 4;
+  border-color: var(--gold);
+  background: rgba(233,196,106,.25);
+  box-shadow: 0 0 22px rgba(233,196,106,.5);
+}
+
+/* --- セルのアニメーション ------------------------------------------------ */
+.cell.anim-pop { animation: cellPop .5s var(--ease-back) both; animation-delay: var(--d, 0ms); }
+@keyframes cellPop {
+  0%   { transform: scale(.2) rotate(-14deg); opacity: 0; }
+  55%  { transform: scale(1.22) rotate(4deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0); }
+}
+
+.cell.anim-paint { animation: cellPaint .55s var(--ease-out) both; animation-delay: var(--d, 0ms); }
+/* 1回転させて終える。180deg で止めると文字が鏡像になってしまう */
+@keyframes cellPaint {
+  0%   { transform: rotateY(0deg) scale(1); filter: brightness(1); }
+  40%  { transform: rotateY(90deg) scale(1.18); filter: brightness(2.4); }
+  70%  { transform: rotateY(240deg) scale(1.1); }
+  100% { transform: rotateY(360deg) scale(1); filter: brightness(1); }
+}
+.cell.anim-paint { transform-style: preserve-3d; }
+
+.cell.anim-absorb { animation: cellAbsorb .65s var(--ease-out) both; animation-delay: var(--d, 0ms); }
+@keyframes cellAbsorb {
+  0%   { transform: scale(1); filter: saturate(1) brightness(1); }
+  25%  { transform: scale(.72) rotate(-8deg); filter: saturate(.2) brightness(.6); }
+  60%  { transform: scale(1.2) rotate(5deg); filter: saturate(1.6) brightness(1.8); }
+  100% { transform: scale(1); filter: none; }
+}
+
+.cell.anim-shine::after { animation: shineSweep .8s var(--ease-out) both; animation-delay: var(--d, 0ms); }
+@keyframes shineSweep {
+  0%   { opacity: 0; transform: translateX(-120%); }
+  40%  { opacity: 1; }
+  100% { opacity: .8; transform: translateX(120%); }
+}
+
+/* --- 飛ぶタイル / エフェクト層 ------------------------------------------- */
+.fx-layer { position: absolute; inset: 0; pointer-events: none; z-index: 30; }
+.flying-tile {
+  position: fixed; z-index: 200; pointer-events: none;
+  border-radius: 8px; display: grid; place-items: center;
+  font-weight: 700; font-size: 13px; color: #2a3244;
+  background: linear-gradient(150deg, #f3f6fb, #c3ccdd);
+  box-shadow: 0 14px 34px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.9);
+  transition: transform .52s var(--ease-out), opacity .2s .38s;
+}
+
+.ripple {
+  position: absolute; border-radius: 50%; pointer-events: none;
+  border: 2px solid var(--rc, #fff);
+  transform: translate(-50%, -50%) scale(.2); opacity: .9;
+  animation: rippleOut .9s var(--ease-out) forwards;
+}
+@keyframes rippleOut {
+  to { transform: translate(-50%, -50%) scale(6); opacity: 0; }
+}
+
+.float-text {
+  position: fixed; z-index: 250; pointer-events: none;
+  font-weight: 800; font-size: 15px; letter-spacing: .02em;
+  text-shadow: 0 2px 10px rgba(0,0,0,.7);
+  animation: floatUp 1.35s var(--ease-out) forwards;
+  white-space: nowrap;
+}
+.float-text.gain { color: var(--good); }
+.float-text.loss { color: var(--bad); }
+.float-text.gold { color: var(--gold); }
+@keyframes floatUp {
+  0%   { transform: translate(-50%, 0) scale(.7); opacity: 0; }
+  18%  { transform: translate(-50%, -12px) scale(1.14); opacity: 1; }
+  70%  { opacity: 1; }
+  100% { transform: translate(-50%, -62px) scale(1); opacity: 0; }
+}
+
+.flying-stock {
+  position: fixed; z-index: 220; pointer-events: none;
+  width: 34px; height: 44px; border-radius: 5px;
+  background: linear-gradient(160deg, var(--c), var(--cd));
+  border: 1px solid rgba(255,255,255,.5);
+  box-shadow: 0 10px 26px rgba(0,0,0,.5);
+  transition: transform .6s var(--ease-out), opacity .25s .4s;
+}
+
+/* --- 手札 ---------------------------------------------------------------- */
+.hand-shell {
+  background: linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.02));
+  border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 12px 14px 14px;
+  animation: dropIn .7s .1s var(--ease-out) both;
+}
+.hand-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; gap: 10px; }
+.hand-title { font-size: 13px; font-weight: 700; letter-spacing: .06em; }
+.hand-hint { font-size: 11.5px; color: var(--text-dim); }
+.hand { display: flex; flex-wrap: wrap; gap: 10px; min-height: 58px; }
+
+.tile {
+  position: relative;
+  width: 62px; height: 54px; border-radius: 10px; cursor: pointer;
+  border: 1px solid rgba(255,255,255,.35);
+  background: linear-gradient(150deg, #f2f5fa, #c0cade);
+  color: #262d3d; font-weight: 800; font-size: 16px;
+  display: grid; place-items: center;
+  box-shadow: 0 6px 16px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.9);
+  transition: transform .2s var(--ease-back), box-shadow .2s, filter .2s;
+  animation: tileDeal .5s var(--ease-back) both;
+  animation-delay: var(--d, 0ms);
+}
+@keyframes tileDeal {
+  0%   { transform: translateY(40px) rotate(-12deg) scale(.6); opacity: 0; }
+  100% { transform: none; opacity: 1; }
+}
+.tile:hover:not(:disabled):not(.dead) { transform: translateY(-8px) scale(1.05); box-shadow: 0 14px 30px rgba(0,0,0,.55); }
+.tile.selected {
+  transform: translateY(-12px) scale(1.08);
+  border-color: var(--gold);
+  box-shadow: 0 0 0 2px var(--gold), 0 16px 34px rgba(233,196,106,.4);
+}
+.tile.dead {
+  filter: grayscale(1) brightness(.55); cursor: not-allowed;
+  background: linear-gradient(150deg, #6b7385, #454c5c); color: #cfd6e4;
+}
+.tile.dead::after {
+  content: "✕"; position: absolute; inset: 0; display: grid; place-items: center;
+  font-size: 26px; color: rgba(255,80,80,.75);
+}
+.tile.blocked { filter: brightness(.7) saturate(.5); cursor: not-allowed; }
+.tile:disabled { cursor: default; }
+.tile .kind {
+  position: absolute; top: -7px; left: 50%; transform: translateX(-50%);
+  font-size: 9px; font-weight: 800; padding: 1px 6px; border-radius: 20px;
+  background: var(--kc, #444); color: #fff; letter-spacing: .04em;
+  box-shadow: 0 2px 6px rgba(0,0,0,.4); white-space: nowrap;
+}
+.hand.locked .tile { cursor: default; }
+
+/* --- アクションバー ------------------------------------------------------ */
+.action-bar { min-height: 0; }
+.action-card {
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+  border: 1px solid var(--line); border-radius: var(--radius); padding: 14px;
+  animation: slideUp .4s var(--ease-out) both;
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: none; }
+}
+.action-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 10px; flex-wrap: wrap; }
+.action-title { font-size: 14px; font-weight: 700; }
+.action-sub { font-size: 12px; color: var(--text-dim); }
+
+.buy-grid {
+  display: grid; gap: 9px;
+  grid-template-columns: repeat(auto-fill, minmax(196px, 1fr));
+}
+.buy-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px 8px 8px; border-radius: 12px;
+  border: 1px solid var(--line); background: rgba(255,255,255,.04);
+  transition: border-color .2s, background .2s, transform .2s var(--ease-back);
+}
+.buy-item.active { border-color: var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); transform: translateY(-2px); }
+.buy-item .swatch {
+  width: 34px; height: 42px; border-radius: 6px; flex: none;
+  background: linear-gradient(160deg, var(--c), var(--cd));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.4);
+  display: grid; place-items: center; font-size: 10px; font-weight: 800; color: #fff;
+}
+.buy-item .meta { min-width: 0; flex: 1; }
+.buy-item .meta b { display: block; font-size: 12px; }
+.buy-item .meta span { font-size: 11px; color: var(--text-dim); }
+.stepper { display: flex; align-items: center; gap: 4px; }
+.stepper button {
+  width: 26px; height: 26px; border-radius: 7px; cursor: pointer;
+  border: 1px solid var(--line-strong); background: rgba(255,255,255,.07);
+  display: grid; place-items: center; font-size: 15px; line-height: 1;
+  transition: background .15s, transform .15s;
+}
+.stepper button:hover:not(:disabled) { background: rgba(255,255,255,.16); }
+.stepper button:active:not(:disabled) { transform: scale(.88); }
+.stepper button:disabled { opacity: .3; cursor: not-allowed; }
+.stepper .qty { width: 22px; text-align: center; font-weight: 700; font-size: 14px; }
+.stepper .qty.bump { animation: qtyBump .3s var(--ease-back); }
+@keyframes qtyBump { 50% { transform: scale(1.5); color: var(--gold); } }
+
+.action-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
+.cart-summary { font-size: 13px; color: var(--text-dim); }
+.cart-summary b { color: var(--gold); font-size: 15px; }
+.action-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.chain-choice { display: flex; flex-wrap: wrap; gap: 10px; }
+.chain-btn {
+  border: 1px solid var(--c); border-radius: 12px; cursor: pointer;
+  padding: 10px 14px; min-width: 128px; text-align: left;
+  background: color-mix(in srgb, var(--c) 16%, transparent);
+  transition: transform .2s var(--ease-back), box-shadow .2s, background .2s;
+  animation: slideUp .35s var(--ease-out) both; animation-delay: var(--d, 0ms);
+}
+.chain-btn:hover { transform: translateY(-4px); background: color-mix(in srgb, var(--c) 30%, transparent);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--c) 35%, transparent); }
+.chain-btn b { display: block; font-size: 14px; }
+.chain-btn span { font-size: 11px; color: var(--text-dim); }
+
+/* --- サイドパネル -------------------------------------------------------- */
+.panel {
+  background: linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.018));
+  border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 12px 13px 14px;
+  animation: dropIn .7s .15s var(--ease-out) both;
+}
+.panel-title {
+  margin: 0 0 10px; font-size: 11px; font-weight: 700;
+  letter-spacing: .18em; color: var(--text-faint); text-transform: uppercase;
+}
+
+/* プレイヤーカード */
+.players { display: flex; flex-direction: column; gap: 8px; }
+.pcard {
+  position: relative; overflow: hidden;
+  border: 1px solid var(--line); border-radius: 12px; padding: 9px 11px;
+  background: rgba(255,255,255,.03);
+  transition: border-color .3s, background .3s, transform .3s var(--ease-back), box-shadow .3s;
+}
+.pcard.active {
+  border-color: var(--gold);
+  background: linear-gradient(120deg, rgba(233,196,106,.16), rgba(233,196,106,.03));
+  box-shadow: 0 8px 24px rgba(233,196,106,.16);
+  transform: translateX(3px);
+}
+.pcard.active::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  background: var(--gold); animation: barGrow .4s var(--ease-out);
+}
+@keyframes barGrow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+.pcard.acting { animation: actingGlow 1.6s ease-in-out infinite; }
+@keyframes actingGlow {
+  0%, 100% { box-shadow: 0 8px 24px rgba(233,196,106,.12); }
+  50% { box-shadow: 0 8px 30px rgba(233,196,106,.35); }
+}
+.pcard-head { display: flex; align-items: center; gap: 8px; }
+.pavatar {
+  width: 26px; height: 26px; border-radius: 8px; flex: none;
+  display: grid; place-items: center; font-size: 12px; font-weight: 800; color: #10131c;
+  background: linear-gradient(150deg, var(--pc), color-mix(in srgb, var(--pc) 55%, #000));
+}
+.pname { font-size: 13px; font-weight: 700; flex: 1; min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pbadge { font-size: 9.5px; padding: 2px 6px; border-radius: 20px;
+  background: rgba(255,255,255,.1); color: var(--text-dim); letter-spacing: .04em; }
+.pcash { font-size: 15px; font-weight: 800; color: var(--gold); font-variant-numeric: tabular-nums; }
+.pworth { font-size: 10.5px; color: var(--text-faint); margin-left: 6px; font-weight: 600; }
+.pcash-row { display: flex; align-items: baseline; margin-top: 3px; }
+.pshares { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 7px; min-height: 4px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 20px;
+  background: color-mix(in srgb, var(--c) 26%, transparent);
+  border: 1px solid color-mix(in srgb, var(--c) 60%, transparent);
+  color: #fff;
+}
+.chip.crown { box-shadow: 0 0 0 1px var(--gold) inset; }
+.chip.new { animation: chipIn .45s var(--ease-back) both; }
+@keyframes chipIn { from { transform: scale(0) rotate(-20deg); opacity: 0; } }
+.chip .n { font-variant-numeric: tabular-nums; }
+
+/* チェーン表 */
+.chain-table { display: flex; flex-direction: column; gap: 5px; }
+.crow {
+  display: grid; grid-template-columns: 26px 1fr 42px 58px 40px;
+  align-items: center; gap: 7px;
+  padding: 6px 8px; border-radius: 9px;
+  background: rgba(255,255,255,.028);
+  border: 1px solid transparent;
+  font-size: 11.5px;
+  transition: background .3s, border-color .3s, opacity .3s, transform .3s var(--ease-back);
+}
+.crow.inactive { opacity: .35; }
+.crow.on { background: color-mix(in srgb, var(--c) 12%, transparent); border-color: color-mix(in srgb, var(--c) 40%, transparent); }
+.crow.bump { animation: rowBump .5s var(--ease-back); }
+@keyframes rowBump { 40% { transform: translateX(6px) scale(1.02); } }
+.cdot { width: 16px; height: 16px; border-radius: 5px;
+  background: linear-gradient(150deg, var(--c), var(--cd));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.45); }
+.cname { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cname small { color: var(--text-faint); font-weight: 500; margin-left: 4px; }
+.csize { text-align: right; font-variant-numeric: tabular-nums; color: var(--text-dim); }
+.cprice { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; color: var(--gold); }
+.cleft { text-align: right; font-variant-numeric: tabular-nums; color: var(--text-faint); }
+.csafe { color: var(--good); font-weight: 700; }
+
+/* ログ */
+.log-panel { flex: 1; min-height: 0; }
+.log { max-height: 232px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px;
+  scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.18) transparent; }
+.log::-webkit-scrollbar { width: 6px; }
+.log::-webkit-scrollbar-thumb { background: rgba(255,255,255,.16); border-radius: 3px; }
+.log-line {
+  font-size: 11.5px; line-height: 1.5; padding: 4px 8px; border-radius: 7px;
+  background: rgba(255,255,255,.022); border-left: 2px solid transparent;
+  color: var(--text-dim);
+  animation: logIn .35s var(--ease-out) both;
+}
+@keyframes logIn { from { opacity: 0; transform: translateX(-10px); } }
+.log-line.money  { color: var(--good); border-left-color: var(--good); }
+.log-line.merge  { color: #ff8ad0; border-left-color: #ff8ad0; }
+.log-line.found  { color: var(--gold); border-left-color: var(--gold); }
+.log-line.safe   { color: #7dd3fc; border-left-color: #7dd3fc; }
+.log-line.system { color: var(--text); border-left-color: var(--gold-deep); font-weight: 600; }
+.log-line.warn   { color: #fbbf24; border-left-color: #fbbf24; }
+.log-line.stock  { color: #c4b5fd; border-left-color: #a78bfa; }
+
+/* --- モーダル ------------------------------------------------------------ */
+.overlay {
+  position: fixed; inset: 0; z-index: 300;
+  display: grid; place-items: center; padding: 20px;
+  background: rgba(6, 9, 16, .78);
+  backdrop-filter: blur(7px);
+  animation: fadeIn .3s ease both;
+}
+.overlay[hidden] { display: none; }
+@keyframes fadeIn { from { opacity: 0; } }
+
+.modal {
+  width: min(640px, 100%); max-height: 88vh; overflow-y: auto;
+  background: linear-gradient(170deg, var(--bg-2), var(--bg-1));
+  border: 1px solid var(--line-strong); border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 40px 100px rgba(0,0,0,.7);
+  animation: modalIn .45s var(--ease-back) both;
+}
+@keyframes modalIn {
+  from { opacity: 0; transform: translateY(30px) scale(.94); }
+}
+.modal h2 { margin: 0 0 6px; font-size: 20px; letter-spacing: .04em; }
+.modal .sub { margin: 0 0 18px; font-size: 12.5px; color: var(--text-dim); line-height: 1.6; }
+.modal-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; flex-wrap: wrap; }
+
+.field { margin-bottom: 16px; }
+.field label { display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 7px; font-weight: 600; }
+.field input[type="text"] {
+  width: 100%; padding: 10px 12px; border-radius: 10px; font-size: 14px;
+  background: rgba(0,0,0,.3); border: 1px solid var(--line-strong); color: var(--text);
+}
+.field input[type="text"]:focus { outline: none; border-color: var(--gold); }
+.seg { display: flex; gap: 6px; flex-wrap: wrap; }
+.seg button {
+  padding: 9px 15px; border-radius: 10px; cursor: pointer; font-size: 13px; font-weight: 600;
+  border: 1px solid var(--line-strong); background: rgba(255,255,255,.05);
+  transition: all .18s var(--ease-back);
+}
+.seg button.on { background: linear-gradient(145deg, #f3d489, var(--gold-deep)); color: #1a1206; border-color: transparent; transform: translateY(-2px); }
+
+/* 株処分ダイアログ */
+.dispose-summary {
+  display: flex; align-items: center; gap: 14px; padding: 12px 14px;
+  border-radius: 12px; margin-bottom: 18px;
+  background: color-mix(in srgb, var(--c) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--c) 45%, transparent);
+}
+.dispose-summary .big { font-size: 26px; font-weight: 800; }
+.dispose-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px 14px; border-radius: 12px; margin-bottom: 9px;
+  background: rgba(255,255,255,.04); border: 1px solid var(--line);
+  transition: border-color .2s, background .2s;
+}
+.dispose-row.has { border-color: var(--gold); background: rgba(233,196,106,.09); }
+.dispose-row .rl b { display: block; font-size: 13.5px; }
+.dispose-row .rl span { font-size: 11.5px; color: var(--text-dim); }
+.range-wrap { display: flex; align-items: center; gap: 10px; }
+input[type="range"] { width: 150px; accent-color: var(--gold); }
+.dispose-total { font-size: 13px; color: var(--text-dim); text-align: right; margin-top: 6px; }
+.dispose-total b { color: var(--good); }
+
+/* 結果画面 */
+.result-list { display: flex; flex-direction: column; gap: 9px; margin-top: 6px; }
+.result-row {
+  display: grid; grid-template-columns: 40px 1fr auto; align-items: center; gap: 12px;
+  padding: 12px 14px; border-radius: 13px;
+  background: rgba(255,255,255,.04); border: 1px solid var(--line);
+  animation: resultIn .55s var(--ease-back) both; animation-delay: var(--d, 0ms);
+}
+@keyframes resultIn { from { opacity: 0; transform: translateX(-26px) scale(.95); } }
+.result-row.first {
+  background: linear-gradient(110deg, rgba(233,196,106,.24), rgba(233,196,106,.05));
+  border-color: var(--gold);
+  box-shadow: 0 10px 34px rgba(233,196,106,.24);
+}
+.result-rank { font-size: 22px; font-weight: 800; text-align: center; color: var(--text-faint); }
+.result-row.first .result-rank { color: var(--gold); }
+.result-name { font-size: 15px; font-weight: 700; }
+.result-detail { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+.result-cash { font-size: 19px; font-weight: 800; color: var(--gold); font-variant-numeric: tabular-nums; }
+
+/* ルール表 */
+.rules-body { font-size: 13px; line-height: 1.75; color: var(--text-dim); }
+.rules-body h3 { color: var(--text); font-size: 13.5px; margin: 18px 0 6px; letter-spacing: .04em; }
+.rules-body ul { margin: 0; padding-left: 20px; }
+.price-table { width: 100%; border-collapse: collapse; font-size: 11.5px; margin-top: 8px; }
+.price-table th, .price-table td { padding: 5px 6px; text-align: center; border-bottom: 1px solid var(--line); }
+.price-table th { color: var(--text-faint); font-weight: 600; }
+.price-table td:first-child, .price-table th:first-child { text-align: left; }
+
+/* --- トースト ------------------------------------------------------------ */
+/* ヘッダーに被らない高さに置く */
+.toast-stack {
+  position: fixed; top: 92px; left: 50%; transform: translateX(-50%);
+  z-index: 400; display: flex; flex-direction: column; gap: 8px; align-items: center;
+  pointer-events: none;
+}
+.toast {
+  padding: 11px 20px; border-radius: 999px; font-size: 13.5px; font-weight: 700;
+  background: linear-gradient(140deg, rgba(30,42,66,.97), rgba(17,24,39,.97));
+  border: 1px solid var(--line-strong);
+  box-shadow: 0 14px 40px rgba(0,0,0,.6);
+  animation: toastIn .45s var(--ease-back) both, toastOut .4s ease 2.1s both;
+  white-space: nowrap; max-width: 90vw; overflow: hidden; text-overflow: ellipsis;
+}
+.toast.big { font-size: 17px; padding: 15px 30px; letter-spacing: .05em; }
+.toast.chain { border-color: var(--c); box-shadow: 0 14px 40px color-mix(in srgb, var(--c) 35%, transparent); }
+.toast.chain b { color: var(--c); }
+@keyframes toastIn { from { opacity: 0; transform: translateY(-24px) scale(.9); } }
+@keyframes toastOut { to { opacity: 0; transform: translateY(-14px) scale(.96); } }
+
+/* --- 紙吹雪 -------------------------------------------------------------- */
+.confetti { position: fixed; inset: 0; pointer-events: none; z-index: 350; display: none; }
+.confetti.on { display: block; }
+
+@keyframes dropIn {
+  from { opacity: 0; transform: translateY(-16px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* --- レスポンシブ -------------------------------------------------------- */
+@media (max-width: 1180px) {
+  .layout { grid-template-columns: 1fr; }
+  .side-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); align-items: start; }
+}
+@media (max-width: 720px) {
+  .topbar { flex-wrap: wrap; gap: 10px; padding: 10px 12px; }
+  .status { order: 3; flex-basis: 100%; text-align: left; }
+  .brand-text p { display: none; }
+  .tile { width: 52px; height: 46px; font-size: 14px; }
+  .cell { border-radius: 5px; }
+  :root { --cell-gap: 2px; }
+  .modal { padding: 18px; border-radius: 16px; }
+  input[type="range"] { width: 110px; }
+  .toast-stack { top: 132px; }
+  .toast { font-size: 12.5px; padding: 9px 16px; }
+  .toast.big { font-size: 14px; padding: 12px 20px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
+</style>
+<div id="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">A</span>
+      <div class="brand-text">
+        <h1>ACQUIRE</h1>
+        <p>ホテルチェーン買収ゲーム</p>
+      </div>
+    </div>
+
+    <div class="status" id="status">
+      <div class="status-turn" id="statusTurn">—</div>
+      <div class="status-phase" id="statusPhase">準備中</div>
+    </div>
+
+    <div class="topbar-actions">
+      <button class="icon-btn" id="btnRules" title="ルール">?</button>
+      <button class="icon-btn" id="btnSound" title="サウンド" aria-pressed="true">♪</button>
+      <button class="btn btn-ghost" id="btnNew">新しいゲーム</button>
+    </div>
+  </header>
+
+  <main class="layout">
+
+    <section class="board-col">
+      <div class="board-shell">
+        <div class="board-glow" id="boardGlow"></div>
+        <div class="board" id="board" role="grid" aria-label="ゲームボード"></div>
+        <div class="fx-layer" id="fxLayer" aria-hidden="true"></div>
+      </div>
+
+      <div class="hand-shell">
+        <div class="hand-head">
+          <span class="hand-title" id="handOwner">あなたの手札</span>
+          <span class="hand-hint" id="handHint">タイルを選んで配置してください</span>
+        </div>
+        <div class="hand" id="hand"></div>
+      </div>
+
+      <div class="action-bar" id="actionBar"></div>
+    </section>
+
+    <aside class="side-col">
+      <div class="panel players-panel">
+        <h2 class="panel-title">プレイヤー</h2>
+        <div class="players" id="players"></div>
+      </div>
+
+      <div class="panel">
+        <h2 class="panel-title">ホテルチェーン</h2>
+        <div class="chain-table" id="chains"></div>
+      </div>
+
+      <div class="panel log-panel">
+        <h2 class="panel-title">ログ</h2>
+        <div class="log" id="log"></div>
+      </div>
+    </aside>
+
+  </main>
+</div>
+
+<div class="overlay" id="overlay" hidden></div>
+<canvas class="confetti" id="confetti" aria-hidden="true"></canvas>
+<div class="toast-stack" id="toasts" aria-live="polite"></div>
+
+<script>
+/* ==========================================================================
+   ACQUIRE - ルールとデータ定義
+   盤面の座標、ホテルチェーン、株価表など「変わらない事実」だけを置く層。
+   ========================================================================== */
+(function (global) {
+  'use strict';
+
+  var AQ = (global.AQ = global.AQ || {});
+
+  var Rules = {};
+
+  /* --- 盤面 ------------------------------------------------------------ */
+  Rules.COLS = 12;
+  Rules.ROWS = 9;
+  Rules.CELLS = Rules.COLS * Rules.ROWS; // 108
+  Rules.ROW_LETTERS = 'ABCDEFGHI';
+
+  /* --- ゲーム定数 ------------------------------------------------------ */
+  Rules.SAFE_SIZE = 11; // これ以上は吸収されない（安全）
+  Rules.END_SIZE = 41; // これ以上のチェーンが出たら終了宣言可能
+  Rules.SHARES_PER_CHAIN = 25;
+  Rules.START_CASH = 6000;
+  Rules.HAND_SIZE = 6;
+  Rules.MAX_BUY_PER_TURN = 3;
+
+  /* --- ホテルチェーン --------------------------------------------------
+     tier 0: 安価 / tier 1: 中間 / tier 2: 高価
+     ---------------------------------------------------------------------- */
+  Rules.CHAINS = [
+    { id: 'luxor',       name: 'Luxor',       jp: 'ルクソール',       abbr: 'LX', tier: 0, color: '#e0483a', dark: '#8f231a' },
+    { id: 'tower',       name: 'Tower',       jp: 'タワー',           abbr: 'TW', tier: 0, color: '#efb019', dark: '#946a05' },
+    { id: 'american',    name: 'American',    jp: 'アメリカン',       abbr: 'AM', tier: 1, color: '#3b7dd8', dark: '#1d4685' },
+    { id: 'festival',    name: 'Festival',    jp: 'フェスティバル',   abbr: 'FS', tier: 1, color: '#2fa464', dark: '#155f37' },
+    { id: 'worldwide',   name: 'Worldwide',   jp: 'ワールドワイド',   abbr: 'WW', tier: 1, color: '#8b5cd6', dark: '#4d2c85' },
+    { id: 'imperial',    name: 'Imperial',    jp: 'インペリアル',     abbr: 'IM', tier: 2, color: '#ef8022', dark: '#984a08' },
+    { id: 'continental', name: 'Continental', jp: 'コンチネンタル',   abbr: 'CT', tier: 2, color: '#17b6c4', dark: '#0a6b74' }
+  ];
+
+  Rules.CHAIN_IDS = Rules.CHAINS.map(function (c) { return c.id; });
+
+  var CHAIN_MAP = {};
+  Rules.CHAINS.forEach(function (c) { CHAIN_MAP[c.id] = c; });
+  Rules.chain = function (id) { return CHAIN_MAP[id]; };
+
+  /* --- 座標ヘルパ ------------------------------------------------------ */
+  Rules.rowOf = function (i) { return Math.floor(i / Rules.COLS); };
+  Rules.colOf = function (i) { return i % Rules.COLS; };
+  Rules.index = function (row, col) { return row * Rules.COLS + col; };
+  Rules.label = function (i) {
+    return (Rules.colOf(i) + 1) + Rules.ROW_LETTERS[Rules.rowOf(i)];
+  };
+  Rules.distance = function (a, b) {
+    return Math.abs(Rules.rowOf(a) - Rules.rowOf(b)) + Math.abs(Rules.colOf(a) - Rules.colOf(b));
+  };
+
+  /* 上下左右の隣接マス（事前計算） */
+  Rules.neighbors = (function () {
+    var all = [];
+    for (var i = 0; i < Rules.CELLS; i++) {
+      var r = Rules.rowOf(i), c = Rules.colOf(i), n = [];
+      if (r > 0) n.push(i - Rules.COLS);
+      if (r < Rules.ROWS - 1) n.push(i + Rules.COLS);
+      if (c > 0) n.push(i - 1);
+      if (c < Rules.COLS - 1) n.push(i + 1);
+      all.push(n);
+    }
+    return all;
+  })();
+
+  /* --- 株価表 ----------------------------------------------------------
+     基準段 = チェーンの大きさから決まる 0..8 の段。
+     価格 = (段 + 2 + tier) * 100
+     例) 2マス/tier0 = 200、41マス/tier2 = 1200
+     ---------------------------------------------------------------------- */
+  function priceStep(size) {
+    if (size < 2) return -1;
+    if (size <= 5) return size - 2;   // 2,3,4,5 -> 0,1,2,3
+    if (size <= 10) return 4;
+    if (size <= 20) return 5;
+    if (size <= 30) return 6;
+    if (size <= 40) return 7;
+    return 8;
+  }
+  Rules.priceStep = priceStep;
+
+  Rules.priceOf = function (chainId, size) {
+    var step = priceStep(size);
+    if (step < 0) return 0;
+    return (step + 2 + CHAIN_MAP[chainId].tier) * 100;
+  };
+
+  Rules.majorityBonus = function (chainId, size) { return Rules.priceOf(chainId, size) * 10; };
+  Rules.minorityBonus = function (chainId, size) { return Rules.priceOf(chainId, size) * 5; };
+
+  /* ボーナス分割は100ドル単位で切り上げ */
+  Rules.roundUp100 = function (n) { return Math.ceil(n / 100) * 100; };
+
+  Rules.isSafe = function (size) { return size >= Rules.SAFE_SIZE; };
+
+  /* 表示用: 価格表の行 */
+  Rules.PRICE_ROWS = [
+    { label: '2',      test: function (s) { return s === 2; } },
+    { label: '3',      test: function (s) { return s === 3; } },
+    { label: '4',      test: function (s) { return s === 4; } },
+    { label: '5',      test: function (s) { return s === 5; } },
+    { label: '6-10',   test: function (s) { return s >= 6 && s <= 10; } },
+    { label: '11-20',  test: function (s) { return s >= 11 && s <= 20; } },
+    { label: '21-30',  test: function (s) { return s >= 21 && s <= 30; } },
+    { label: '31-40',  test: function (s) { return s >= 31 && s <= 40; } },
+    { label: '41+',    test: function (s) { return s >= 41; } }
+  ];
+
+  Rules.formatMoney = function (n) {
+    var sign = n < 0 ? '-' : '';
+    return sign + '$' + Math.abs(n).toLocaleString('en-US');
+  };
+
+  AQ.Rules = Rules;
+})(window);
+</script>
+<script>
+/* ==========================================================================
+   ACQUIRE - ゲームエンジン
+   状態遷移とルール判定のみを担当する。DOM には一切触れない。
+   UI 層は state.fx（演出キュー）を読んでアニメーションを再生する。
+   ========================================================================== */
+(function (global) {
+  'use strict';
+
+  var AQ = global.AQ;
+  var R = AQ.Rules;
+  var E = {};
+
+  /* ------------------------------------------------------------------ *
+   * 乱数（シード指定で再現可能）
+   * ------------------------------------------------------------------ */
+  function mulberry32(a) {
+    return function () {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      var t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function shuffle(arr, rand) {
+    for (var i = arr.length - 1; i > 0; i--) {
+      var j = Math.floor(rand() * (i + 1));
+      var t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+    }
+    return arr;
+  }
+
+  function zeroShares() {
+    var o = {};
+    R.CHAIN_IDS.forEach(function (id) { o[id] = 0; });
+    return o;
+  }
+
+  /* ------------------------------------------------------------------ *
+   * 盤面の読み取り
+   *   board[i] === null  空き
+   *   board[i] === '.'   無所属タイル
+   *   board[i] === 'luxor' 等  チェーン所属
+   * ------------------------------------------------------------------ */
+  function sizes(s) {
+    var o = zeroShares();
+    for (var i = 0; i < R.CELLS; i++) {
+      var v = s.board[i];
+      if (v && v !== '.') o[v]++;
+    }
+    return o;
+  }
+  E.sizes = sizes;
+
+  E.sizeOf = function (s, chainId) {
+    var n = 0;
+    for (var i = 0; i < R.CELLS; i++) if (s.board[i] === chainId) n++;
+    return n;
+  };
+
+  E.activeChains = function (s) {
+    var sz = sizes(s);
+    return R.CHAIN_IDS.filter(function (id) { return sz[id] > 0; });
+  };
+
+  E.availableChains = function (s) {
+    var sz = sizes(s);
+    return R.CHAIN_IDS.filter(function (id) { return sz[id] === 0; });
+  };
+
+  E.tilesOf = function (s, chainId) {
+    var out = [];
+    for (var i = 0; i < R.CELLS; i++) if (s.board[i] === chainId) out.push(i);
+    return out;
+  };
+
+  /* 無所属タイルの連結成分（初期配置で隣り合う場合があるため必要） */
+  function loneCluster(s, seeds) {
+    var seen = {}, out = [], stack = seeds.slice();
+    while (stack.length) {
+      var t = stack.pop();
+      if (seen[t] || s.board[t] !== '.') continue;
+      seen[t] = true; out.push(t);
+      R.neighbors[t].forEach(function (n) {
+        if (!seen[n] && s.board[n] === '.') stack.push(n);
+      });
+    }
+    return out;
+  }
+
+  /* ------------------------------------------------------------------ *
+   * タイルを置いた時に何が起きるかを判定する
+   *   single  : 何も起きない（孤立タイル）
+   *   found   : 新チェーン設立
+   *   blocked : 設立したいが7チェーン全て盤上 → 今は置けない（一時的）
+   *   grow    : 既存チェーンの拡張
+   *   merge   : 合併
+   *   dead    : 安全なチェーン同士をつなぐ → 永久に置けない
+   * ------------------------------------------------------------------ */
+  E.analyze = function (s, i) {
+    var chains = [], loneSeeds = [];
+    R.neighbors[i].forEach(function (j) {
+      var v = s.board[j];
+      if (v === null || v === undefined) return;
+      if (v === '.') loneSeeds.push(j);
+      else if (chains.indexOf(v) === -1) chains.push(v);
+    });
+
+    var lones = loneSeeds.length ? loneCluster(s, loneSeeds) : [];
+
+    if (chains.length >= 2) {
+      var sz = sizes(s);
+      var info = {};
+      chains.forEach(function (c) { info[c] = sz[c]; });
+      var safeOnes = chains.filter(function (c) { return R.isSafe(sz[c]); });
+      if (safeOnes.length >= 2) {
+        return { type: 'dead', chains: chains, sizes: info };
+      }
+      var max = Math.max.apply(null, chains.map(function (c) { return sz[c]; }));
+      var candidates = chains.filter(function (c) { return sz[c] === max; });
+      return { type: 'merge', chains: chains, sizes: info, lones: lones, candidates: candidates };
+    }
+
+    if (chains.length === 1) {
+      return { type: 'grow', chain: chains[0], lones: lones };
+    }
+
+    if (lones.length > 0) {
+      var avail = E.availableChains(s);
+      if (avail.length === 0) return { type: 'blocked', lones: lones };
+      return { type: 'found', lones: lones, options: avail };
+    }
+
+    return { type: 'single' };
+  };
+
+  E.isPlayable = function (s, i) {
+    if (s.board[i] !== null) return false;
+    var a = E.analyze(s, i);
+    return a.type !== 'dead' && a.type !== 'blocked';
+  };
+
+  E.isPermanentlyDead = function (s, i) {
+    if (s.board[i] !== null) return false;
+    return E.analyze(s, i).type === 'dead';
+  };
+
+  E.playableTiles = function (s, player) {
+    return player.tiles.filter(function (t) { return E.isPlayable(s, t); });
+  };
+
+  /* ------------------------------------------------------------------ *
+   * 演出キュー & ログ
+   * ------------------------------------------------------------------ */
+  function fx(s, event) { s.fx.push(event); }
+  function log(s, text, kind) {
+    s.log.push({ text: text, kind: kind || 'info', turn: s.turnCount });
+    if (s.log.length > 400) s.log.shift();
+  }
+  E.log = log;
+
+  /* ------------------------------------------------------------------ *
+   * ゲーム生成
+   * ------------------------------------------------------------------ */
+  E.newGame = function (opts) {
+    opts = opts || {};
+    var seed = opts.seed != null ? opts.seed : (Math.random() * 1e9) | 0;
+    var rand = mulberry32(seed);
+
+    var players = (opts.players || []).map(function (p, i) {
+      return {
+        idx: i,
+        name: p.name,
+        isHuman: !!p.isHuman,
+        personality: p.personality || 'balanced',
+        cash: R.START_CASH,
+        tiles: [],
+        shares: zeroShares()
+      };
+    });
+
+    var bag = [];
+    for (var i = 0; i < R.CELLS; i++) bag.push(i);
+    shuffle(bag, rand);
+
+    var bank = {};
+    R.CHAIN_IDS.forEach(function (id) { bank[id] = R.SHARES_PER_CHAIN; });
+
+    var s = {
+      seed: seed,
+      rand: rand,
+      players: players,
+      board: new Array(R.CELLS).fill(null),
+      bank: bank,
+      bag: bag,
+      current: 0,
+      phase: 'place',
+      pending: null,
+      fx: [],
+      log: [],
+      turnCount: 1,
+      endDeclared: false,
+      results: null,
+      boughtThisTurn: 0,
+      discarded: [] // 永久に置けず箱に戻したタイル
+    };
+
+    /* 初期タイル: 各プレイヤーが1枚ずつ盤面に置く */
+    var starters = [];
+    players.forEach(function (p) {
+      var t = s.bag.pop();
+      s.board[t] = '.';
+      starters.push({ tile: t, player: p.idx });
+    });
+    fx(s, { t: 'setup', tiles: starters });
+    log(s, '初期タイルを配置しました', 'system');
+
+    /* 手札を配る */
+    players.forEach(function (p) {
+      while (p.tiles.length < R.HAND_SIZE && s.bag.length) p.tiles.push(s.bag.pop());
+      p.tiles.sort(function (a, b) { return a - b; });
+    });
+
+    /* 手番順は初期タイルが最も左上の人から（簡易ルール） */
+    var first = starters.slice().sort(function (a, b) { return a.tile - b.tile; })[0];
+    s.current = first.player;
+
+    startTurn(s);
+    return s;
+  };
+
+  /* ------------------------------------------------------------------ *
+   * 手番の開始
+   * ------------------------------------------------------------------ */
+  function startTurn(s) {
+    var p = s.players[s.current];
+    s.boughtThisTurn = 0;
+    s.pending = null;
+    fx(s, { t: 'turn', player: p.idx });
+
+    if (E.playableTiles(s, p).length === 0) {
+      // 置けるタイルが無い場合は配置を飛ばして株購入へ
+      s.phase = 'buy';
+      s.pending = { noPlayable: true };
+      log(s, p.name + ' は置けるタイルがありません', 'warn');
+    } else {
+      s.phase = 'place';
+    }
+  }
+  E.startTurn = startTurn;
+
+  /* 今アクションすべきプレイヤー（株処分フェーズだけは手番と異なる） */
+  E.actor = function (s) {
+    if (s.phase === 'dispose' && s.pending && s.pending.dispose) {
+      return s.players[s.pending.dispose.order[s.pending.dispose.at]];
+    }
+    return s.players[s.current];
+  };
+
+  /* ------------------------------------------------------------------ *
+   * タイル配置
+   * ------------------------------------------------------------------ */
+  E.placeTile = function (s, tile) {
+    if (s.phase !== 'place') throw new Error('phase');
+    var p = s.players[s.current];
+    var handPos = p.tiles.indexOf(tile);
+    if (handPos === -1) throw new Error('not in hand');
+    if (!E.isPlayable(s, tile)) throw new Error('illegal tile');
+
+    var a = E.analyze(s, tile);
+    p.tiles.splice(handPos, 1);
+    s.board[tile] = '.';
+    fx(s, { t: 'place', tile: tile, player: p.idx });
+    log(s, p.name + ' が ' + R.label(tile) + ' に配置', 'place');
+
+    if (a.type === 'single') {
+      toBuyPhase(s);
+      return;
+    }
+
+    if (a.type === 'found') {
+      s.pending = { found: { tile: tile, lones: a.lones, options: a.options } };
+      if (a.options.length === 1) {
+        E.chooseFoundChain(s, a.options[0]);
+      } else {
+        s.phase = 'found';
+      }
+      return;
+    }
+
+    if (a.type === 'grow') {
+      var tiles = [tile].concat(a.lones);
+      paint(s, a.chain, tiles);
+      var newSize = E.sizeOf(s, a.chain);
+      fx(s, { t: 'grow', chain: a.chain, tiles: tiles, origin: tile, size: newSize });
+      log(s, R.chain(a.chain).jp + ' が ' + newSize + 'マスに拡大', 'grow');
+      checkSafe(s, a.chain, newSize);
+      toBuyPhase(s);
+      return;
+    }
+
+    if (a.type === 'merge') {
+      s.pending = {
+        merge: {
+          tile: tile,
+          lones: a.lones,
+          chains: a.chains,
+          sizes: a.sizes,
+          survivor: null,
+          defunct: null,
+          idx: 0,
+          maker: p.idx
+        }
+      };
+      if (a.candidates.length === 1) {
+        E.chooseSurvivor(s, a.candidates[0]);
+      } else {
+        s.phase = 'survivor';
+        s.pending.merge.candidates = a.candidates;
+      }
+      return;
+    }
+
+    throw new Error('unreachable placement type: ' + a.type);
+  };
+
+  function paint(s, chainId, tiles) {
+    tiles.forEach(function (t) { s.board[t] = chainId; });
+  }
+
+  function checkSafe(s, chainId, size) {
+    if (size >= R.SAFE_SIZE && !s._safeAnnounced) s._safeAnnounced = {};
+    if (size >= R.SAFE_SIZE) {
+      s._safeAnnounced = s._safeAnnounced || {};
+      if (!s._safeAnnounced[chainId]) {
+        s._safeAnnounced[chainId] = true;
+        fx(s, { t: 'safe', chain: chainId });
+        log(s, R.chain(chainId).jp + ' が安全圏（11マス）に到達', 'safe');
+      }
+    } else if (s._safeAnnounced) {
+      delete s._safeAnnounced[chainId];
+    }
+  }
+
+  /* ------------------------------------------------------------------ *
+   * 新チェーン設立
+   * ------------------------------------------------------------------ */
+  E.chooseFoundChain = function (s, chainId) {
+    var f = s.pending && s.pending.found;
+    if (!f) throw new Error('no pending found');
+    if (f.options.indexOf(chainId) === -1) throw new Error('unavailable chain');
+
+    var p = s.players[s.current];
+    var tiles = [f.tile].concat(f.lones);
+    paint(s, chainId, tiles);
+    var size = tiles.length;
+
+    fx(s, { t: 'found', chain: chainId, tiles: tiles, origin: f.tile, player: p.idx, size: size });
+    log(s, p.name + ' が ' + R.chain(chainId).jp + ' を設立（' + size + 'マス）', 'found');
+
+    /* 設立者ボーナス: 無料で1株 */
+    if (s.bank[chainId] > 0) {
+      s.bank[chainId]--;
+      p.shares[chainId]++;
+      fx(s, { t: 'founder-share', chain: chainId, player: p.idx });
+      log(s, p.name + ' は設立者ボーナスで ' + R.chain(chainId).jp + ' 1株を獲得', 'stock');
+    }
+
+    checkSafe(s, chainId, size);
+    s.pending = null;
+    toBuyPhase(s);
+  };
+
+  /* ------------------------------------------------------------------ *
+   * 合併
+   * ------------------------------------------------------------------ */
+  E.chooseSurvivor = function (s, chainId) {
+    var m = s.pending && s.pending.merge;
+    if (!m) throw new Error('no pending merge');
+    if (m.chains.indexOf(chainId) === -1) throw new Error('not a merging chain');
+
+    m.survivor = chainId;
+    m.defunct = m.chains.filter(function (c) { return c !== chainId; })
+      .sort(function (a, b) { return m.sizes[b] - m.sizes[a]; });
+
+    /* 置いたタイルと周囲の無所属タイルは即座に存続チェーンへ */
+    var joining = [m.tile].concat(m.lones);
+    paint(s, chainId, joining);
+
+    fx(s, {
+      t: 'merge-start',
+      survivor: chainId,
+      defunct: m.defunct.slice(),
+      tile: m.tile,
+      joining: joining
+    });
+    log(s,
+      R.chain(chainId).jp + ' が ' +
+      m.defunct.map(function (c) { return R.chain(c).jp; }).join('・') + ' を吸収合併',
+      'merge');
+
+    m.idx = 0;
+    processDefunct(s);
+  };
+
+  /* 消滅チェーンを1つずつ処理する */
+  function processDefunct(s) {
+    var m = s.pending.merge;
+    if (m.idx >= m.defunct.length) { finishMerge(s); return; }
+
+    var d = m.defunct[m.idx];
+    var size = m.sizes[d];
+
+    /* ボーナス支払い */
+    var payouts = E.bonusSplit(s, d, size);
+    payouts.forEach(function (pay) {
+      s.players[pay.player].cash += pay.amount;
+      log(s, s.players[pay.player].name + ' が ' + R.chain(d).jp + ' の' +
+        (pay.kind === 'majority' ? '筆頭株主' : '第2位株主') + 'ボーナス ' +
+        R.formatMoney(pay.amount) + ' を獲得', 'money');
+    });
+    if (payouts.length) fx(s, { t: 'bonus', chain: d, size: size, payouts: payouts });
+
+    /* 株の処分待ち行列（合併を起こしたプレイヤーから時計回り） */
+    var order = [];
+    for (var k = 0; k < s.players.length; k++) {
+      var pi = (m.maker + k) % s.players.length;
+      if (s.players[pi].shares[d] > 0) order.push(pi);
+    }
+
+    if (order.length === 0) {
+      absorbDefunct(s, d);
+      m.idx++;
+      processDefunct(s);
+      return;
+    }
+
+    s.phase = 'dispose';
+    s.pending.dispose = {
+      defunct: d,
+      size: size,
+      price: R.priceOf(d, size),
+      survivor: m.survivor,
+      order: order,
+      at: 0
+    };
+  }
+
+  /* 筆頭 / 第2位ボーナスの計算（同数は分割して100ドル単位切り上げ） */
+  E.bonusSplit = function (s, chainId, size) {
+    var maj = R.majorityBonus(chainId, size);
+    var min = R.minorityBonus(chainId, size);
+    var holders = s.players.filter(function (p) { return p.shares[chainId] > 0; });
+    if (holders.length === 0) return [];
+
+    var sorted = holders.slice().sort(function (a, b) { return b.shares[chainId] - a.shares[chainId]; });
+    var top = sorted[0].shares[chainId];
+    var tops = sorted.filter(function (p) { return p.shares[chainId] === top; });
+    var out = [];
+
+    if (tops.length > 1) {
+      /* 筆頭が同数 → 筆頭+第2位を合算して山分け */
+      var each = R.roundUp100((maj + min) / tops.length);
+      tops.forEach(function (p) {
+        out.push({ player: p.idx, amount: each, kind: 'majority', shares: p.shares[chainId] });
+      });
+      return out;
+    }
+
+    out.push({ player: tops[0].idx, amount: maj, kind: 'majority', shares: top });
+
+    var rest = sorted.filter(function (p) { return p.idx !== tops[0].idx; });
+    if (rest.length === 0) {
+      /* 株主が1人だけなら第2位ボーナスも同じ人へ */
+      out.push({ player: tops[0].idx, amount: min, kind: 'minority', shares: top });
+      return out;
+    }
+
+    var second = rest[0].shares[chainId];
+    var seconds = rest.filter(function (p) { return p.shares[chainId] === second; });
+    var amt = R.roundUp100(min / seconds.length);
+    seconds.forEach(function (p) {
+      out.push({ player: p.idx, amount: amt, kind: 'minority', shares: second });
+    });
+    return out;
+  };
+
+  /* 消滅チェーン株の処分オプションの上限 */
+  E.disposalLimits = function (s, playerIdx) {
+    var d = s.pending.dispose;
+    var held = s.players[playerIdx].shares[d.defunct];
+    var maxTrade = Math.min(held - (held % 2), s.bank[d.survivor] * 2);
+    return { held: held, price: d.price, maxSell: held, maxTrade: maxTrade };
+  };
+
+  E.submitDisposal = function (s, choice) {
+    if (s.phase !== 'dispose') throw new Error('phase');
+    var d = s.pending.dispose;
+    var pi = d.order[d.at];
+    var p = s.players[pi];
+    var held = p.shares[d.defunct];
+
+    var sell = Math.max(0, choice.sell | 0);
+    var trade = Math.max(0, choice.trade | 0);
+    if (trade % 2 !== 0) throw new Error('trade must be even');
+    if (sell + trade > held) throw new Error('too many shares');
+    if (trade / 2 > s.bank[d.survivor]) throw new Error('not enough survivor shares');
+
+    if (sell > 0) {
+      var gain = sell * d.price;
+      p.cash += gain;
+      p.shares[d.defunct] -= sell;
+      s.bank[d.defunct] += sell;
+      fx(s, { t: 'sell', player: pi, chain: d.defunct, count: sell, amount: gain });
+      log(s, p.name + ' が ' + R.chain(d.defunct).jp + ' ' + sell + '株を売却（+' +
+        R.formatMoney(gain) + '）', 'money');
+    }
+    if (trade > 0) {
+      var got = trade / 2;
+      p.shares[d.defunct] -= trade;
+      s.bank[d.defunct] += trade;
+      p.shares[d.survivor] += got;
+      s.bank[d.survivor] -= got;
+      fx(s, { t: 'trade', player: pi, from: d.defunct, to: d.survivor, count: trade, got: got });
+      log(s, p.name + ' が ' + R.chain(d.defunct).jp + ' ' + trade + '株を ' +
+        R.chain(d.survivor).jp + ' ' + got + '株に交換', 'stock');
+    }
+    var keep = held - sell - trade;
+    if (keep > 0) {
+      log(s, p.name + ' は ' + R.chain(d.defunct).jp + ' ' + keep + '株を保持', 'stock');
+    }
+
+    d.at++;
+    if (d.at < d.order.length) return; // 次の株主へ
+
+    /* この消滅チェーンの処分完了 → 盤面を吸収 */
+    var m = s.pending.merge;
+    absorbDefunct(s, d.defunct);
+    s.pending.dispose = null;
+    m.idx++;
+    processDefunct(s);
+  };
+
+  function absorbDefunct(s, defunctId) {
+    var m = s.pending.merge;
+    var tiles = E.tilesOf(s, defunctId);
+    paint(s, m.survivor, tiles);
+    fx(s, {
+      t: 'absorb',
+      chain: m.survivor,
+      from: defunctId,
+      tiles: tiles,
+      origin: m.tile
+    });
+    if (s._safeAnnounced) delete s._safeAnnounced[defunctId];
+  }
+
+  function finishMerge(s) {
+    var m = s.pending.merge;
+    var size = E.sizeOf(s, m.survivor);
+    fx(s, { t: 'merge-end', chain: m.survivor, size: size });
+    log(s, R.chain(m.survivor).jp + ' は ' + size + 'マスになりました', 'merge');
+    checkSafe(s, m.survivor, size);
+    s.pending = null;
+    toBuyPhase(s);
+  }
+
+  /* ------------------------------------------------------------------ *
+   * 株の購入
+   * ------------------------------------------------------------------ */
+  function toBuyPhase(s) {
+    s.phase = 'buy';
+    s.boughtThisTurn = 0;
+  }
+
+  E.buyOptions = function (s, player) {
+    var sz = sizes(s);
+    return R.CHAIN_IDS.filter(function (id) {
+      return sz[id] > 0 && s.bank[id] > 0;
+    }).map(function (id) {
+      return { id: id, size: sz[id], price: R.priceOf(id, sz[id]), left: s.bank[id] };
+    });
+  };
+
+  E.buy = function (s, cart) {
+    if (s.phase !== 'buy') throw new Error('phase');
+    var p = s.players[s.current];
+    var sz = sizes(s);
+    var total = 0, count = 0;
+
+    R.CHAIN_IDS.forEach(function (id) {
+      var n = (cart && cart[id]) | 0;
+      if (n <= 0) return;
+      if (sz[id] === 0) throw new Error('chain not on board: ' + id);
+      if (n > s.bank[id]) throw new Error('not enough shares: ' + id);
+      count += n;
+      total += n * R.priceOf(id, sz[id]);
+    });
+
+    if (count > R.MAX_BUY_PER_TURN) throw new Error('max 3 shares');
+    if (total > p.cash) throw new Error('not enough cash');
+
+    R.CHAIN_IDS.forEach(function (id) {
+      var n = (cart && cart[id]) | 0;
+      if (n <= 0) return;
+      var cost = n * R.priceOf(id, sz[id]);
+      p.cash -= cost;
+      p.shares[id] += n;
+      s.bank[id] -= n;
+      fx(s, { t: 'buy', player: p.idx, chain: id, count: n, cost: cost });
+      log(s, p.name + ' が ' + R.chain(id).jp + ' ' + n + '株を購入（-' +
+        R.formatMoney(cost) + '）', 'stock');
+    });
+    if (count === 0) log(s, p.name + ' は株を購入しませんでした', 'info');
+
+    s.boughtThisTurn = count;
+    endTurn(s);
+  };
+
+  /* ------------------------------------------------------------------ *
+   * 終了条件
+   * ------------------------------------------------------------------ */
+  E.canDeclareEnd = function (s) {
+    var sz = sizes(s);
+    var active = R.CHAIN_IDS.filter(function (id) { return sz[id] > 0; });
+    if (active.length === 0) return false;
+    if (active.some(function (id) { return sz[id] >= R.END_SIZE; })) return true;
+    return active.every(function (id) { return sz[id] >= R.SAFE_SIZE; });
+  };
+
+  E.declareEnd = function (s) {
+    if (!E.canDeclareEnd(s)) throw new Error('cannot declare end');
+    s.endDeclared = true;
+    log(s, s.players[s.current].name + ' がゲーム終了を宣言しました', 'system');
+    fx(s, { t: 'declare-end', player: s.current });
+  };
+
+  /* ------------------------------------------------------------------ *
+   * 手番の終了 → 補充 → 次のプレイヤー
+   * ------------------------------------------------------------------ */
+  function endTurn(s) {
+    var p = s.players[s.current];
+
+    if (s.endDeclared) { finalize(s); return; }
+
+    /* 永久に置けないタイルを捨てて引き直す */
+    var dumped = p.tiles.filter(function (t) { return E.isPermanentlyDead(s, t); });
+    if (dumped.length) {
+      p.tiles = p.tiles.filter(function (t) { return !E.isPermanentlyDead(s, t); });
+      s.discarded = s.discarded.concat(dumped); // 箱に戻す（山札には戻らない）
+      log(s, p.name + ' が死にタイル ' + dumped.map(R.label).join('・') + ' を交換', 'info');
+      fx(s, { t: 'discard', player: p.idx, tiles: dumped });
+    }
+
+    /* 手札を6枚まで補充 */
+    var drawn = [];
+    while (p.tiles.length < R.HAND_SIZE && s.bag.length > 0) {
+      var t = s.bag.pop();
+      p.tiles.push(t);
+      drawn.push(t);
+    }
+    p.tiles.sort(function (a, b) { return a - b; });
+    if (drawn.length) fx(s, { t: 'draw', player: p.idx, tiles: drawn });
+
+    /* 全員が置けなくなったら終了 */
+    s.current = (s.current + 1) % s.players.length;
+    if (s.current === 0) s.turnCount++;
+
+    var anyone = s.players.some(function (pl) {
+      return E.playableTiles(s, pl).length > 0 || pl.tiles.length > 0;
+    });
+    if (!anyone && s.bag.length === 0) { finalize(s); return; }
+
+    startTurn(s);
+  }
+  E.endTurn = endTurn;
+
+  /* ------------------------------------------------------------------ *
+   * 最終清算
+   * ------------------------------------------------------------------ */
+  function finalize(s) {
+    var sz = sizes(s);
+    var active = R.CHAIN_IDS.filter(function (id) { return sz[id] > 0; });
+    var breakdown = s.players.map(function (p) {
+      return { player: p.idx, bonus: 0, stock: 0, start: p.cash };
+    });
+
+    log(s, '=== 最終清算 ===', 'system');
+
+    active.forEach(function (id) {
+      E.bonusSplit(s, id, sz[id]).forEach(function (pay) {
+        s.players[pay.player].cash += pay.amount;
+        breakdown[pay.player].bonus += pay.amount;
+        log(s, s.players[pay.player].name + ' : ' + R.chain(id).jp + ' ' +
+          (pay.kind === 'majority' ? '筆頭' : '第2位') + 'ボーナス ' +
+          R.formatMoney(pay.amount), 'money');
+      });
+    });
+
+    active.forEach(function (id) {
+      var price = R.priceOf(id, sz[id]);
+      s.players.forEach(function (p) {
+        var n = p.shares[id];
+        if (n <= 0) return;
+        var amount = n * price;
+        p.cash += amount;
+        p.shares[id] = 0;
+        s.bank[id] += n;
+        breakdown[p.idx].stock += amount;
+        log(s, p.name + ' : ' + R.chain(id).jp + ' ' + n + '株を清算 ' +
+          R.formatMoney(amount), 'money');
+      });
+    });
+
+    fx(s, { t: 'final-settle', breakdown: breakdown });
+
+    var ranking = s.players.slice().sort(function (a, b) { return b.cash - a.cash; })
+      .map(function (p, i) {
+        return {
+          player: p.idx, name: p.name, cash: p.cash, rank: i + 1,
+          bonus: breakdown[p.idx].bonus, stock: breakdown[p.idx].stock,
+          isHuman: p.isHuman
+        };
+      });
+    /* 同額は同順位 */
+    for (var i = 1; i < ranking.length; i++) {
+      if (ranking[i].cash === ranking[i - 1].cash) ranking[i].rank = ranking[i - 1].rank;
+    }
+
+    s.results = ranking;
+    s.phase = 'gameover';
+    fx(s, { t: 'gameover', ranking: ranking });
+    log(s, '優勝: ' + ranking[0].name + '（' + R.formatMoney(ranking[0].cash) + '）', 'system');
+  }
+  E.finalize = finalize;
+
+  /* ------------------------------------------------------------------ *
+   * 評価ヘルパ（UI / AI 共用）
+   * ------------------------------------------------------------------ */
+  E.netWorth = function (s, player) {
+    var sz = sizes(s);
+    var total = player.cash;
+    R.CHAIN_IDS.forEach(function (id) {
+      if (sz[id] > 0 && player.shares[id] > 0) {
+        total += player.shares[id] * R.priceOf(id, sz[id]);
+      }
+    });
+    return total;
+  };
+
+  /* そのチェーンで自分が筆頭/第2位かを返す */
+  E.standing = function (s, chainId, playerIdx) {
+    var counts = s.players.map(function (p) { return p.shares[chainId]; });
+    var mine = counts[playerIdx];
+    if (mine === 0) return 'none';
+    var better = counts.filter(function (c, i) { return i !== playerIdx && c > mine; }).length;
+    if (better === 0) return 'majority';
+    if (better === 1) return 'minority';
+    return 'other';
+  };
+
+  AQ.Engine = E;
+})(window);
+</script>
+<script>
+/* ==========================================================================
+   ACQUIRE - ルールベース CPU
+   学習も探索木も使わない。すべての選択肢を「期待ドル」に換算して比較する。
+
+   換算の柱:
+     1. 株は最終清算で「そのときの株価」に戻る → 値上がり分が利益
+     2. 筆頭ボーナス = 株価 x10 / 第2位 = 株価 x5 → 地位の改善は株価の何倍にもなる
+     3. 合併ボーナスは即金。自分が取れるなら大きく加点、他人に渡すなら減点
+   これで「設立」「拡大」「合併」「捨て牌」を同じ物差しで比較できる。
+   ========================================================================== */
+(function (global) {
+  'use strict';
+
+  var AQ = global.AQ;
+  var R = AQ.Rules;
+  var E = AQ.Engine;
+  var AI = {};
+
+  /* 性格ごとの重み。
+     rival は「相手の利益をどれだけ嫌うか」。0.7 前後が最も強い（実測）ので
+     そこを中心に、性格づけとして前後に散らしてある。 */
+  var PERSONA = {
+    balanced:   { buy: 1.00, bonus: 1.00, rival: 0.70, hoard: 600,  label: 'バランス' },
+    aggressive: { buy: 1.25, bonus: 1.20, rival: 0.50, hoard: 0,    label: 'アグレッシブ' },
+    cautious:   { buy: 0.85, bonus: 0.90, rival: 0.85, hoard: 1600, label: 'キャッシュ重視' },
+    tycoon:     { buy: 1.10, bonus: 1.35, rival: 0.65, hoard: 300,  label: 'マージャー' }
+  };
+  AI.PERSONA = PERSONA;
+  function persona(p) { return PERSONA[p.personality] || PERSONA.balanced; }
+
+  function others(s, p) {
+    return s.players.filter(function (x) { return x.idx !== p.idx; });
+  }
+  function maxOtherShares(s, p, chainId) {
+    return others(s, p).reduce(function (m, x) { return Math.max(m, x.shares[chainId]); }, 0);
+  }
+  function jitter(s, scale) { return (s.rand() - 0.5) * (scale || 60); }
+
+  /* ------------------------------------------------------------------ *
+   * このチェーンは今後どれくらい伸びそうか（残りタイル数からの粗い見積り）
+   * ------------------------------------------------------------------ */
+  function expectedGrowth(s, size) {
+    if (size >= R.END_SIZE) return 0;
+    var remaining = s.bag.length;
+    var active = E.activeChains(s).length || 1;
+    /* 残タイルのうち、このチェーンに付く分をざっくり見積もる */
+    var g = Math.round(remaining / (active + 2));
+    return Math.max(1, Math.min(16, g));
+  }
+
+  /* 現時点で清算したら p がそのチェーンから受け取るボーナス額 */
+  function bonusFor(s, p, chainId, size) {
+    var out = 0;
+    E.bonusSplit(s, chainId, size).forEach(function (pay) {
+      if (pay.player === p.idx) out += pay.amount;
+    });
+    return out;
+  }
+
+  /* p の持ち株を delta 変化させたときのボーナス差分（一時的に書き換えて計算） */
+  function bonusDelta(s, p, chainId, size, delta) {
+    var before = bonusFor(s, p, chainId, size);
+    p.shares[chainId] += delta;
+    var after = bonusFor(s, p, chainId, size);
+    p.shares[chainId] -= delta;
+    return after - before;
+  }
+
+  /* ------------------------------------------------------------------ *
+   * チェーンが add マス伸びることの価値（全プレイヤー分をドルで合算）
+   *   株価上昇 x 持ち株 + ボーナス倍率（筆頭 x10 / 第2位 x5）
+   * ------------------------------------------------------------------ */
+  function growthValue(s, p, chainId, size, add) {
+    if (add <= 0) return 0;
+    var w = persona(p);
+    var per = R.priceOf(chainId, size + add) - R.priceOf(chainId, size);
+    if (per === 0) {
+      /* 段の途中でも「次の段に近づく」分は価値がある */
+      per = 100 * add / bracketWidth(size);
+    }
+    var v = 0;
+    s.players.forEach(function (x) {
+      var gain = x.shares[chainId] * per;
+      var st = E.standing(s, chainId, x.idx);
+      if (st === 'majority') gain += per * 10;
+      else if (st === 'minority') gain += per * 5;
+      v += (x.idx === p.idx) ? gain : -gain * w.rival;
+    });
+    return v;
+  }
+
+  function bracketWidth(size) {
+    if (size <= 5) return 1;
+    if (size <= 10) return 5;
+    if (size <= 40) return 10;
+    return 20;
+  }
+
+  /* ------------------------------------------------------------------ *
+   * 合併の価値（存続チェーンを固定して評価）
+   * ------------------------------------------------------------------ */
+  function evaluateMerge(s, p, info, survivor) {
+    var w = persona(p);
+    var v = 0;
+    var defunct = info.chains.filter(function (c) { return c !== survivor; });
+    var totalTiles = 0;
+    info.chains.forEach(function (c) { totalTiles += info.sizes[c]; });
+    var lones = info.lones ? info.lones.length : 0;
+
+    defunct.forEach(function (d) {
+      var size = info.sizes[d];
+      var price = R.priceOf(d, size);
+
+      /* 即金のボーナス。自分の取り分は満額、他人の取り分は割り引いて減点 */
+      E.bonusSplit(s, d, size).forEach(function (pay) {
+        if (pay.player === p.idx) v += pay.amount * w.bonus;
+        else v -= pay.amount * w.rival;
+      });
+
+      /* 持ち株は売却／2:1交換に変えられる（現金化の自由度） */
+      v += p.shares[d] * price * 0.15;
+
+      /* 育てている最中の小チェーンを潰すのは将来価値の取りこぼし */
+      if (p.shares[d] >= 3 && size <= 6) {
+        v -= growthValue(s, p, d, size, expectedGrowth(s, size)) * 0.4;
+      }
+    });
+
+    /* 存続チェーンが一気に伸びる */
+    var oldSize = info.sizes[survivor];
+    var newSize = totalTiles + 1 + lones;
+    v += growthValue(s, p, survivor, oldSize, newSize - oldSize);
+
+    /* 安全圏に入ると以後は絶対に吸収されない */
+    if (oldSize < R.SAFE_SIZE && newSize >= R.SAFE_SIZE) {
+      var mine = p.shares[survivor];
+      var maxOth = maxOtherShares(s, p, survivor);
+      if (mine > maxOth) v += R.priceOf(survivor, newSize) * 3;
+      else if (mine === 0) v -= R.priceOf(survivor, newSize) * 2.5;
+    }
+
+    /* 41マスは終了トリガー */
+    if (newSize >= R.END_SIZE) v += isLeading(s, p) ? 6000 : -6000;
+
+    return v;
+  }
+
+  /* ------------------------------------------------------------------ *
+   * 最終資産の見込み（= 今ゲームが終わったときの所持金）
+   * ------------------------------------------------------------------ */
+  function projectedWorth(s, playerIdx) {
+    var sz = E.sizes(s);
+    var p = s.players[playerIdx];
+    var total = p.cash;
+    R.CHAIN_IDS.forEach(function (id) {
+      if (sz[id] === 0) return;
+      total += p.shares[id] * R.priceOf(id, sz[id]);
+      E.bonusSplit(s, id, sz[id]).forEach(function (pay) {
+        if (pay.player === playerIdx) total += pay.amount;
+      });
+    });
+    return total;
+  }
+  AI.projectedWorth = projectedWorth;
+
+  function isLeading(s, p) {
+    var mine = projectedWorth(s, p.idx);
+    return others(s, p).every(function (x) { return projectedWorth(s, x.idx) <= mine; });
+  }
+
+  /* ------------------------------------------------------------------ *
+   * 新チェーン設立の価値
+   * ------------------------------------------------------------------ */
+  function foundValue(s, p, options) {
+    var best = 0;
+    options.forEach(function (id) {
+      var startPrice = R.priceOf(id, 2);
+      var g = expectedGrowth(s, 2);
+      var projPrice = R.priceOf(id, Math.min(R.END_SIZE, 2 + g));
+
+      /* 無料でもらえる1株の将来価値 */
+      var v = projPrice;
+      /* 設立直後は最安値。買い増せるなら先行者として筆頭を取りやすい */
+      if (p.cash >= startPrice * 3) v += projPrice * 1.6;
+      else if (p.cash >= startPrice) v += projPrice * 0.5;
+      /* 死に株だったものが復活する */
+      v += p.shares[id] * projPrice * 0.8;
+      /* 相手の死に株を蘇らせてしまう分は減点 */
+      v -= maxOtherShares(s, p, id) * projPrice * 0.5;
+      if (v > best) best = v;
+    });
+    return best;
+  }
+
+  /* ------------------------------------------------------------------ *
+   * タイル1枚のスコア（単位はドル相当）
+   * ------------------------------------------------------------------ */
+  function scoreTile(s, p, tile) {
+    var a = E.analyze(s, tile);
+    var sz = E.sizes(s);
+
+    if (a.type === 'dead' || a.type === 'blocked') return -Infinity;
+
+    if (a.type === 'single') {
+      /* 誰の得にもならない「捨て牌」。周囲が空いているほど無害 */
+      var near = 0;
+      R.neighbors[tile].forEach(function (n) {
+        R.neighbors[n].forEach(function (nn) { if (s.board[nn]) near++; });
+      });
+      return 40 - near * 12 + jitter(s, 20);
+    }
+
+    if (a.type === 'found') {
+      return foundValue(s, p, a.options) + jitter(s);
+    }
+
+    if (a.type === 'grow') {
+      var size = sz[a.chain];
+      var add = 1 + a.lones.length;
+      var newSize = size + add;
+      var v = growthValue(s, p, a.chain, size, add);
+
+      /* 安全圏の分かれ目 */
+      if (size < R.SAFE_SIZE && newSize >= R.SAFE_SIZE) {
+        var mine = p.shares[a.chain];
+        var maxOth = maxOtherShares(s, p, a.chain);
+        if (mine > maxOth) v += R.priceOf(a.chain, newSize) * 3;
+        else if (mine === 0) v -= R.priceOf(a.chain, newSize) * 2.5;
+        else v -= R.priceOf(a.chain, newSize) * 0.8;
+      }
+      if (newSize >= R.END_SIZE) v += isLeading(s, p) ? 6000 : -6000;
+      return v + jitter(s);
+    }
+
+    if (a.type === 'merge') {
+      var best = -Infinity;
+      a.candidates.forEach(function (c) {
+        best = Math.max(best, evaluateMerge(s, p, a, c));
+      });
+      return best + jitter(s);
+    }
+
+    return jitter(s);
+  }
+  AI.scoreTile = scoreTile;
+
+  /* ------------------------------------------------------------------ *
+   * 公開 API
+   * ------------------------------------------------------------------ */
+  AI.chooseTile = function (s, p) {
+    var legal = E.playableTiles(s, p);
+    if (!legal.length) return null;
+    var best = legal[0], bestScore = -Infinity;
+    legal.forEach(function (t) {
+      var sc = scoreTile(s, p, t);
+      if (sc > bestScore) { bestScore = sc; best = t; }
+    });
+    return best;
+  };
+
+  AI.chooseFoundChain = function (s, p, options) {
+    var g = expectedGrowth(s, 2);
+    var best = options[0], bestScore = -Infinity;
+    options.forEach(function (id) {
+      var projPrice = R.priceOf(id, Math.min(R.END_SIZE, 2 + g));
+      var startPrice = R.priceOf(id, 2);
+      var sc = projPrice;
+      sc += p.shares[id] * projPrice * 0.8;            // 手持ちの死に株が復活
+      sc -= maxOtherShares(s, p, id) * projPrice * 0.5; // 相手の死に株も復活してしまう
+      /* 買い増す余力があるなら高ティアの方が儲かる。無いなら安い方 */
+      sc += (p.cash >= startPrice * 3) ? projPrice * 0.6 : -startPrice * 2;
+      sc += (s.rand() - 0.5) * 50;
+      if (sc > bestScore) { bestScore = sc; best = id; }
+    });
+    return best;
+  };
+
+  AI.chooseSurvivor = function (s, p, info, candidates) {
+    var best = candidates[0], bestScore = -Infinity;
+    candidates.forEach(function (c) {
+      var sc = evaluateMerge(s, p, info, c);
+      if (sc > bestScore) { bestScore = sc; best = c; }
+    });
+    return best;
+  };
+
+  /* ------------------------------------------------------------------ *
+   * 消滅チェーンの株の処分
+   *   売却 = 即金 / 交換 = 2株を存続1株に / 保持 = 再設立に賭ける
+   * ------------------------------------------------------------------ */
+  AI.disposal = function (s, p) {
+    var d = s.pending.dispose;
+    var held = p.shares[d.defunct];
+    var survivor = d.survivor;
+    var survSize = E.sizeOf(s, survivor);
+    var survPrice = R.priceOf(survivor, survSize);
+    var g = expectedGrowth(s, survSize);
+    var survProj = R.priceOf(survivor, Math.min(R.END_SIZE, survSize + g));
+
+    /* 交換: 2株 -> 1株。存続チェーンで地位が上がるなら価値が高い */
+    var trade = 0;
+    if (s.bank[survivor] > 0 && held >= 2) {
+      var needed = Math.max(0, maxOtherShares(s, p, survivor) - p.shares[survivor] + 1);
+      var wantShares = Math.min(needed, s.bank[survivor]);
+      if (wantShares > 0) {
+        /* 筆頭を取れるなら、そのために必要な分だけ交換する */
+        var gainIfMajority = bonusDelta(s, p, survivor, survSize, wantShares);
+        var costOfTrade = wantShares * 2 * d.price; // 売却していれば得られた現金
+        if (gainIfMajority + wantShares * survProj > costOfTrade) {
+          var t = Math.min(held, wantShares * 2, s.bank[survivor] * 2);
+          trade = t - (t % 2);
+        }
+      }
+      /* 地位が取れなくても、存続側の方が明らかに伸びるなら乗り換える */
+      if (trade === 0 && held >= 4 && survProj > d.price * 2.2) {
+        trade = Math.min(2, s.bank[survivor] * 2);
+        trade -= trade % 2;
+      }
+    }
+
+    var remain = held - trade;
+
+    /* 保持: 再設立されれば価値が戻るが、されなければ紙切れ */
+    var keep = 0;
+    var canRefound = E.availableChains(s).length + 1 > 0 && s.bag.length > 12;
+    if (canRefound && d.size <= 4 && remain >= 2) keep = 1;
+    keep = Math.max(0, Math.min(keep, remain));
+
+    return { sell: remain - keep, trade: trade };
+  };
+
+  /* ------------------------------------------------------------------ *
+   * 株の購入（1株ずつ、期待ドルが最大の株を貪欲に選ぶ）
+   * ------------------------------------------------------------------ */
+  function buyValue(s, p, opt) {
+    var w = persona(p);
+    var g = expectedGrowth(s, opt.size);
+    var projSize = Math.min(R.END_SIZE, opt.size + g);
+    var projPrice = R.priceOf(opt.id, projSize);
+
+    /* 1) 値上がり益（買値は清算で戻ってくる前提） */
+    var v = (projPrice - opt.price);
+
+    /* 2) ボーナス地位の改善。確実ではないので割り引く */
+    v += bonusDelta(s, p, opt.id, projSize, 1) * 0.5 * w.bonus;
+
+    /* 3) 残り株が少ないチェーンは押さえておく価値がある */
+    if (opt.left <= 5) v += projPrice * 0.4;
+
+    /* 4) 安全圏のチェーンは確実にボーナスが出るので堅い */
+    if (opt.size >= R.SAFE_SIZE) v += projPrice * 0.2;
+
+    return v * w.buy + (s.rand() - 0.5) * 80;
+  }
+
+  AI.buyCart = function (s, p) {
+    var w = persona(p);
+    var cart = {};
+    var budget = p.cash;
+    var endgame = E.canDeclareEnd(s) || s.bag.length < 8;
+    var reserve = endgame ? 0 : w.hoard;
+
+    /* 評価中だけ持ち株を仮に増やすので、必ず元に戻す */
+    var applied = {};
+    try {
+      for (var k = 0; k < R.MAX_BUY_PER_TURN; k++) {
+        var opts = E.buyOptions(s).filter(function (o) {
+          return o.left - (cart[o.id] || 0) > 0 && o.price <= budget;
+        });
+        if (!opts.length) break;
+
+        var best = null, bestV = -Infinity;
+        opts.forEach(function (o) {
+          var v = buyValue(s, p, o);
+          if (budget - o.price < reserve) v -= o.price;
+          if (v > bestV) { bestV = v; best = o; }
+        });
+
+        if (!best || bestV <= 0) break;
+        cart[best.id] = (cart[best.id] || 0) + 1;
+        applied[best.id] = (applied[best.id] || 0) + 1;
+        p.shares[best.id]++;          // 次の1株の評価に反映させる
+        budget -= best.price;
+      }
+    } finally {
+      R.CHAIN_IDS.forEach(function (id) {
+        if (applied[id]) p.shares[id] -= applied[id];
+      });
+    }
+    return cart;
+  };
+
+  AI.shouldDeclareEnd = function (s, p) {
+    if (!E.canDeclareEnd(s)) return false;
+    var mine = projectedWorth(s, p.idx);
+    var best = 0;
+    others(s, p).forEach(function (x) { best = Math.max(best, projectedWorth(s, x.idx)); });
+    /* 勝っているなら終わらせる。負けているなら粘る */
+    return mine > best;
+  };
+
+  AQ.AI = AI;
+})(window);
+</script>
+<script>
+/* ==========================================================================
+   ACQUIRE - UI レイヤー
+   エンジンが積んだ演出キュー(state.fx)を順番に再生し、DOM を更新する。
+   ========================================================================== */
+(function (global) {
+  'use strict';
+
+  var AQ = global.AQ;
+  var R = AQ.Rules;
+  var Engine = AQ.Engine;
+  var AI = AQ.AI;
+
+  /* ------------------------------------------------------------------ *
+   * DOM
+   * ------------------------------------------------------------------ */
+  var $ = function (id) { return document.getElementById(id); };
+  var el = {
+    board: $('board'), boardGlow: $('boardGlow'), fxLayer: $('fxLayer'),
+    hand: $('hand'), handOwner: $('handOwner'), handHint: $('handHint'),
+    actionBar: $('actionBar'), players: $('players'), chains: $('chains'),
+    log: $('log'), overlay: $('overlay'), toasts: $('toasts'),
+    statusTurn: $('statusTurn'), statusPhase: $('statusPhase'), status: $('status'),
+    confetti: $('confetti'),
+    btnNew: $('btnNew'), btnRules: $('btnRules'), btnSound: $('btnSound')
+  };
+
+  /* ------------------------------------------------------------------ *
+   * UI 状態
+   * ------------------------------------------------------------------ */
+  var state = null;
+  var cells = [];
+  var view = new Array(R.CELLS).fill(null); // 現在 DOM に描かれている盤面
+  var selectedTile = null;
+  var cart = {};
+  var declareIntent = false;
+  var busy = false;
+  var prevCash = {};
+  var prevShares = {};
+  var lastLogCount = 0;
+  var lastActorIdx = -1;
+  var handSignature = '';
+  var speed = 1;
+
+  var TIMING = {
+    aiThink: 520,
+    place: 420,
+    paintStep: 55,
+    found: 900,
+    merge: 1100,
+    absorb: 800,
+    bonus: 700,
+    stock: 500,
+    small: 260
+  };
+  function ms(n) { return n * speed; }
+  function sleep(n) { return new Promise(function (r) { setTimeout(r, ms(n)); }); }
+
+  var PLAYER_COLORS = ['#e9c46a', '#4ade80', '#60a5fa', '#f472b6', '#fb923c', '#a78bfa'];
+
+  /* ------------------------------------------------------------------ *
+   * サウンド（WebAudio の簡易シンセ）
+   * ------------------------------------------------------------------ */
+  var Sound = {
+    ctx: null,
+    enabled: true,
+    ensure: function () {
+      if (!this.ctx) {
+        var C = global.AudioContext || global.webkitAudioContext;
+        if (C) this.ctx = new C();
+      }
+      if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+      return this.ctx;
+    },
+    tone: function (freq, dur, type, gain, delay) {
+      if (!this.enabled) return;
+      var ctx = this.ensure(); if (!ctx) return;
+      var t0 = ctx.currentTime + (delay || 0);
+      var osc = ctx.createOscillator(), g = ctx.createGain();
+      osc.type = type || 'sine';
+      osc.frequency.setValueAtTime(freq, t0);
+      g.gain.setValueAtTime(0, t0);
+      g.gain.linearRampToValueAtTime(gain || .07, t0 + .012);
+      g.gain.exponentialRampToValueAtTime(.0001, t0 + dur);
+      osc.connect(g); g.connect(ctx.destination);
+      osc.start(t0); osc.stop(t0 + dur + .02);
+    },
+    sweep: function (f1, f2, dur, gain) {
+      if (!this.enabled) return;
+      var ctx = this.ensure(); if (!ctx) return;
+      var t0 = ctx.currentTime;
+      var osc = ctx.createOscillator(), g = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(f1, t0);
+      osc.frequency.exponentialRampToValueAtTime(f2, t0 + dur);
+      g.gain.setValueAtTime(gain || .05, t0);
+      g.gain.exponentialRampToValueAtTime(.0001, t0 + dur);
+      osc.connect(g); g.connect(ctx.destination);
+      osc.start(t0); osc.stop(t0 + dur + .02);
+    },
+    place:  function () { this.tone(420, .09, 'triangle', .08); this.tone(620, .07, 'sine', .04, .03); },
+    found:  function () { [523, 659, 784, 1047].forEach(function (f, i) { Sound.tone(f, .35, 'triangle', .06, i * .07); }); },
+    merge:  function () { this.sweep(160, 900, .55, .06); this.tone(110, .5, 'sawtooth', .04); },
+    coin:   function () { this.tone(988, .1, 'square', .05); this.tone(1319, .16, 'square', .04, .06); },
+    stock:  function () { this.tone(660, .1, 'sine', .05); this.tone(880, .12, 'sine', .04, .05); },
+    safe:   function () { [784, 988, 1175].forEach(function (f, i) { Sound.tone(f, .3, 'sine', .05, i * .06); }); },
+    turn:   function () { this.tone(330, .12, 'sine', .04); },
+    win:    function () { [523, 659, 784, 1047, 1319].forEach(function (f, i) { Sound.tone(f, .5, 'triangle', .07, i * .11); }); },
+    error:  function () { this.tone(150, .18, 'square', .05); }
+  };
+
+  /* ------------------------------------------------------------------ *
+   * 小さな演出ユーティリティ
+   * ------------------------------------------------------------------ */
+  function rectOf(node) { return node.getBoundingClientRect(); }
+
+  function flyTile(fromRect, toRect, label) {
+    var d = document.createElement('div');
+    d.className = 'flying-tile';
+    d.textContent = label;
+    d.style.left = fromRect.left + 'px';
+    d.style.top = fromRect.top + 'px';
+    d.style.width = fromRect.width + 'px';
+    d.style.height = fromRect.height + 'px';
+    document.body.appendChild(d);
+    var dx = toRect.left + toRect.width / 2 - (fromRect.left + fromRect.width / 2);
+    var dy = toRect.top + toRect.height / 2 - (fromRect.top + fromRect.height / 2);
+    var scale = toRect.width / Math.max(1, fromRect.width);
+    requestAnimationFrame(function () {
+      d.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(' + scale + ') rotate(8deg)';
+      d.style.opacity = '0';
+    });
+    setTimeout(function () { d.remove(); }, ms(760));
+  }
+
+  function flyStock(fromRect, toRect, color, dark, delay) {
+    setTimeout(function () {
+      var d = document.createElement('div');
+      d.className = 'flying-stock';
+      d.style.setProperty('--c', color);
+      d.style.setProperty('--cd', dark);
+      d.style.left = (fromRect.left + fromRect.width / 2 - 17) + 'px';
+      d.style.top = (fromRect.top + fromRect.height / 2 - 22) + 'px';
+      document.body.appendChild(d);
+      var dx = toRect.left + toRect.width / 2 - (fromRect.left + fromRect.width / 2);
+      var dy = toRect.top + toRect.height / 2 - (fromRect.top + fromRect.height / 2);
+      requestAnimationFrame(function () {
+        d.style.transform = 'translate(' + dx + 'px,' + dy + 'px) rotate(' + (Math.random() * 40 - 20) + 'deg) scale(.6)';
+        d.style.opacity = '0';
+      });
+      setTimeout(function () { d.remove(); }, ms(900));
+    }, ms(delay || 0));
+  }
+
+  function floatText(anchor, text, cls) {
+    if (!anchor) return;
+    var r = rectOf(anchor);
+    var d = document.createElement('div');
+    d.className = 'float-text ' + (cls || 'gain');
+    d.textContent = text;
+    d.style.left = (r.left + r.width / 2) + 'px';
+    d.style.top = (r.top + r.height * .3) + 'px';
+    document.body.appendChild(d);
+    setTimeout(function () { d.remove(); }, ms(1450));
+  }
+
+  function ripple(cellIndex, color) {
+    var cell = cells[cellIndex]; if (!cell) return;
+    var br = rectOf(el.board);
+    var cr = rectOf(cell);
+    var d = document.createElement('div');
+    d.className = 'ripple';
+    d.style.setProperty('--rc', color);
+    d.style.left = (cr.left - br.left + cr.width / 2) + 'px';
+    d.style.top = (cr.top - br.top + cr.height / 2) + 'px';
+    d.style.width = cr.width + 'px';
+    d.style.height = cr.width + 'px';
+    el.fxLayer.appendChild(d);
+    setTimeout(function () { d.remove(); }, ms(1000));
+  }
+
+  function glowBoard(cellIndex, color) {
+    var br = rectOf(el.board), cr = rectOf(cells[cellIndex]);
+    el.boardGlow.style.setProperty('--gc', color);
+    el.boardGlow.style.setProperty('--gx', ((cr.left - br.left + cr.width / 2) / br.width * 100) + '%');
+    el.boardGlow.style.setProperty('--gy', ((cr.top - br.top + cr.height / 2) / br.height * 100) + '%');
+    el.boardGlow.classList.add('on');
+    setTimeout(function () { el.boardGlow.classList.remove('on'); }, ms(900));
+  }
+
+  function quake() {
+    var shell = el.board.parentElement;
+    shell.classList.remove('quake'); void shell.offsetWidth; shell.classList.add('quake');
+    setTimeout(function () { shell.classList.remove('quake'); }, ms(600));
+  }
+
+  function toast(html, cls, chainColor) {
+    var d = document.createElement('div');
+    d.className = 'toast ' + (cls || '');
+    d.innerHTML = html;
+    if (chainColor) d.style.setProperty('--c', chainColor);
+    el.toasts.appendChild(d);
+    setTimeout(function () { d.remove(); }, ms(2600));
+  }
+
+  function animateNumber(node, from, to, duration) {
+    var start = performance.now();
+    var dur = ms(duration || 650);
+    function frame(now) {
+      var t = Math.min(1, (now - start) / dur);
+      var e = 1 - Math.pow(1 - t, 3);
+      node.textContent = R.formatMoney(Math.round(from + (to - from) * e));
+      if (t < 1) requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  /* ------------------------------------------------------------------ *
+   * 盤面の描画
+   * ------------------------------------------------------------------ */
+  function buildBoard() {
+    el.board.innerHTML = '';
+    cells = [];
+    for (var i = 0; i < R.CELLS; i++) {
+      var c = document.createElement('div');
+      c.className = 'cell';
+      c.setAttribute('role', 'gridcell');
+      c.dataset.i = i;
+      c.textContent = R.label(i);
+      c.addEventListener('click', onCellClick);
+      el.board.appendChild(c);
+      cells.push(c);
+    }
+  }
+
+  var ANIM_CLASSES = ['anim-pop', 'anim-paint', 'anim-absorb', 'anim-shine'];
+
+  function paintCell(i, val, anim, delay) {
+    var cell = cells[i];
+    view[i] = val;
+    ANIM_CLASSES.forEach(function (a) { cell.classList.remove(a); });
+    cell.className = 'cell';
+    cell.style.removeProperty('--c');
+    cell.style.removeProperty('--cd');
+
+    if (val === null || val === undefined) {
+      cell.textContent = R.label(i);
+    } else if (val === '.') {
+      cell.classList.add('lone');
+      cell.textContent = R.label(i);
+    } else {
+      var ch = R.chain(val);
+      cell.classList.add('chained');
+      cell.style.setProperty('--c', ch.color);
+      cell.style.setProperty('--cd', ch.dark);
+      cell.innerHTML = '<span class="tag">' + ch.abbr + '</span>';
+      cell.title = ch.jp + ' ' + R.label(i);
+    }
+
+    if (anim) {
+      cell.style.setProperty('--d', ms(delay || 0) + 'ms');
+      void cell.offsetWidth;
+      cell.classList.add(anim);
+    }
+  }
+
+  /* 一群のタイルを、起点から近い順に順番に塗る */
+  function paintGroup(tiles, val, origin, anim, stepMs) {
+    var sorted = tiles.slice().sort(function (a, b) {
+      return R.distance(a, origin) - R.distance(b, origin);
+    });
+    var step = stepMs != null ? stepMs : TIMING.paintStep;
+    sorted.forEach(function (t, k) {
+      paintCell(t, val, anim, k * step);
+    });
+    return sorted.length * step + 600;
+  }
+
+  function syncBoard() {
+    for (var i = 0; i < R.CELLS; i++) {
+      if (view[i] !== state.board[i]) paintCell(i, state.board[i]);
+    }
+  }
+
+  function decorateBoard() {
+    var sz = Engine.sizes(state);
+    var human = Engine.actor(state);
+    var playable = {};
+    if (state.phase === 'place' && human.isHuman) {
+      human.tiles.forEach(function (t) {
+        if (Engine.isPlayable(state, t)) playable[t] = true;
+      });
+    }
+    for (var i = 0; i < R.CELLS; i++) {
+      var cell = cells[i];
+      var v = state.board[i];
+      cell.classList.toggle('safe-mark', !!(v && v !== '.' && sz[v] >= R.SAFE_SIZE));
+      cell.classList.toggle('playable', !!playable[i]);
+      cell.classList.toggle('target', selectedTile === i);
+    }
+  }
+
+  /* ------------------------------------------------------------------ *
+   * 手札
+   * ------------------------------------------------------------------ */
+  function kindOf(tile) {
+    var a = Engine.analyze(state, tile);
+    switch (a.type) {
+      case 'found':   return { text: '設立', color: '#e9c46a' };
+      case 'merge':   return { text: '合併', color: '#ff6fb5' };
+      case 'grow':    return { text: R.chain(a.chain).jp, color: R.chain(a.chain).color };
+      case 'dead':    return { text: '配置不可', color: '#94a3b8' };
+      case 'blocked': return { text: '設立不可', color: '#94a3b8' };
+      default:        return null;
+    }
+  }
+
+  function renderHand() {
+    var human = state.players.find(function (p) { return p.isHuman; });
+    var owner = human || state.players[state.current];
+    var isTurn = human ? (state.current === human.idx && state.phase === 'place') : false;
+
+    el.handOwner.textContent = human ? 'あなたの手札' : (owner.name + ' の手札（観戦）');
+
+    var sig = owner.idx + ':' + owner.tiles.join(',') + ':' + isTurn;
+    var changed = sig !== handSignature;
+    handSignature = sig;
+
+    el.hand.innerHTML = '';
+    el.hand.classList.toggle('locked', !isTurn);
+
+    owner.tiles.forEach(function (t, i) {
+      var b = document.createElement('button');
+      b.className = 'tile';
+      b.textContent = R.label(t);
+      b.dataset.tile = t;
+      if (changed) b.style.setProperty('--d', ms(i * 55) + 'ms');
+      else b.style.animation = 'none';
+
+      var a = Engine.analyze(state, t);
+      if (a.type === 'dead') b.classList.add('dead');
+      else if (a.type === 'blocked') b.classList.add('blocked');
+
+      if (isTurn) {
+        var k = kindOf(t);
+        if (k) {
+          var tag = document.createElement('span');
+          tag.className = 'kind';
+          tag.textContent = k.text;
+          tag.style.setProperty('--kc', k.color);
+          b.appendChild(tag);
+        }
+        b.disabled = (a.type === 'dead' || a.type === 'blocked');
+        if (selectedTile === t) b.classList.add('selected');
+        b.addEventListener('click', function () { onHandClick(t); });
+      } else {
+        b.disabled = true;
+      }
+      el.hand.appendChild(b);
+    });
+
+    if (!owner.tiles.length) {
+      var empty = document.createElement('div');
+      empty.style.cssText = 'color:var(--text-faint);font-size:12px;padding:16px 4px;';
+      empty.textContent = 'タイルはありません（山札切れ）';
+      el.hand.appendChild(empty);
+    }
+
+    var actingIsHuman = human && Engine.actor(state).idx === human.idx;
+    if (!human) el.handHint.textContent = 'CPU同士の対戦を観戦しています';
+    else if (state.phase === 'gameover') el.handHint.textContent = 'ゲーム終了';
+    else if (isTurn) el.handHint.textContent = selectedTile != null
+      ? R.label(selectedTile) + ' を盤面に置きます'
+      : 'タイルを選んで配置してください';
+    else if (actingIsHuman) el.handHint.textContent = '下の操作パネルで ' +
+      (PHASE_TEXT[state.phase] || '') + ' を行ってください';
+    else el.handHint.textContent = '他のプレイヤーの手番です';
+  }
+
+  /* ------------------------------------------------------------------ *
+   * プレイヤーパネル
+   * ------------------------------------------------------------------ */
+  function renderPlayers() {
+    var actor = Engine.actor(state);
+    var sz = Engine.sizes(state);
+
+    state.players.forEach(function (p) {
+      var card = el.players.querySelector('[data-p="' + p.idx + '"]');
+      if (!card) {
+        card = document.createElement('div');
+        card.className = 'pcard';
+        card.dataset.p = p.idx;
+        card.innerHTML =
+          '<div class="pcard-head">' +
+            '<div class="pavatar"></div>' +
+            '<div class="pname"></div>' +
+            '<div class="pbadge"></div>' +
+          '</div>' +
+          '<div class="pcash-row"><div class="pcash"></div><div class="pworth"></div></div>' +
+          '<div class="pshares"></div>';
+        card.style.setProperty('--pc', PLAYER_COLORS[p.idx % PLAYER_COLORS.length]);
+        el.players.appendChild(card);
+      }
+
+      card.querySelector('.pavatar').textContent = p.name.slice(0, 1);
+      card.querySelector('.pname').textContent = p.name;
+      card.querySelector('.pbadge').textContent = p.isHuman
+        ? 'YOU'
+        : (AI.PERSONA[p.personality] || AI.PERSONA.balanced).label;
+
+      var cashNode = card.querySelector('.pcash');
+      var before = prevCash[p.idx];
+      if (before == null) cashNode.textContent = R.formatMoney(p.cash);
+      else if (before !== p.cash) animateNumber(cashNode, before, p.cash);
+      prevCash[p.idx] = p.cash;
+
+      var worth = Engine.netWorth(state, p);
+      card.querySelector('.pworth').textContent = '資産 ' + R.formatMoney(worth);
+
+      card.classList.toggle('active', p.idx === state.current && state.phase !== 'gameover');
+      card.classList.toggle('acting', p.idx === actor.idx && state.phase !== 'gameover');
+
+      /* 株チップ */
+      var box = card.querySelector('.pshares');
+      var prev = prevShares[p.idx] || {};
+      box.innerHTML = '';
+      R.CHAIN_IDS.forEach(function (id) {
+        var n = p.shares[id];
+        if (n <= 0) return;
+        var ch = R.chain(id);
+        var chip = document.createElement('span');
+        chip.className = 'chip';
+        chip.style.setProperty('--c', ch.color);
+        chip.innerHTML = ch.abbr + ' <span class="n">' + n + '</span>';
+        if (sz[id] > 0 && Engine.standing(state, id, p.idx) === 'majority') chip.classList.add('crown');
+        if ((prev[id] || 0) !== n) chip.classList.add('new');
+        box.appendChild(chip);
+      });
+      prevShares[p.idx] = Object.assign({}, p.shares);
+    });
+  }
+
+  function playerCardOf(idx) { return el.players.querySelector('[data-p="' + idx + '"]'); }
+
+  /* ------------------------------------------------------------------ *
+   * チェーン表
+   * ------------------------------------------------------------------ */
+  function renderChains() {
+    var sz = Engine.sizes(state);
+    el.chains.innerHTML = '';
+    R.CHAINS.forEach(function (ch) {
+      var size = sz[ch.id];
+      var row = document.createElement('div');
+      row.className = 'crow' + (size > 0 ? ' on' : ' inactive');
+      row.dataset.c = ch.id;
+      row.style.setProperty('--c', ch.color);
+      row.style.setProperty('--cd', ch.dark);
+      var safe = size >= R.SAFE_SIZE;
+      row.innerHTML =
+        '<div class="cdot"></div>' +
+        '<div class="cname">' + ch.jp + '<small>' + ['安', '中', '高'][ch.tier] + '</small></div>' +
+        '<div class="csize' + (safe ? ' csafe' : '') + '">' + (size || '—') + (safe ? '🔒' : '') + '</div>' +
+        '<div class="cprice">' + (size ? R.formatMoney(R.priceOf(ch.id, size)) : '—') + '</div>' +
+        '<div class="cleft">' + state.bank[ch.id] + '株</div>';
+      el.chains.appendChild(row);
+    });
+  }
+
+  function bumpChainRow(chainId) {
+    var row = el.chains.querySelector('[data-c="' + chainId + '"]');
+    if (!row) return;
+    row.classList.remove('bump'); void row.offsetWidth; row.classList.add('bump');
+  }
+
+  /* ------------------------------------------------------------------ *
+   * ログ
+   * ------------------------------------------------------------------ */
+  function renderLog() {
+    for (var i = lastLogCount; i < state.log.length; i++) {
+      var line = document.createElement('div');
+      line.className = 'log-line ' + state.log[i].kind;
+      line.textContent = state.log[i].text;
+      el.log.appendChild(line);
+    }
+    if (state.log.length !== lastLogCount) {
+      lastLogCount = state.log.length;
+      el.log.scrollTop = el.log.scrollHeight;
+    }
+    while (el.log.children.length > 200) el.log.removeChild(el.log.firstChild);
+  }
+
+  /* ------------------------------------------------------------------ *
+   * ステータス
+   * ------------------------------------------------------------------ */
+  var PHASE_TEXT = {
+    place: 'タイルを配置',
+    found: '設立するチェーンを選択',
+    survivor: '存続するチェーンを選択',
+    dispose: '消滅チェーンの株を処分',
+    buy: '株の購入',
+    gameover: 'ゲーム終了'
+  };
+
+  function renderStatus() {
+    var actor = Engine.actor(state);
+    if (state.phase === 'gameover') {
+      el.statusTurn.textContent = 'ゲーム終了';
+      el.statusPhase.textContent = state.results ? '優勝: ' + state.results[0].name : '';
+    } else {
+      var youTag = (actor.isHuman && actor.name !== 'あなた') ? '（あなた）' : '';
+      el.statusTurn.textContent = actor.name + youTag + ' の手番';
+      el.statusPhase.textContent = 'ラウンド ' + state.turnCount + ' ・ ' +
+        (PHASE_TEXT[state.phase] || '') +
+        ' ・ 山札 ' + state.bag.length + '枚';
+    }
+    if (actor.idx !== lastActorIdx) {
+      lastActorIdx = actor.idx;
+      el.status.classList.remove('flash'); void el.status.offsetWidth; el.status.classList.add('flash');
+    }
+  }
+
+  /* ------------------------------------------------------------------ *
+   * アクションバー（フェーズごとの操作 UI）
+   * ------------------------------------------------------------------ */
+  function card(title, sub) {
+    var d = document.createElement('div');
+    d.className = 'action-card';
+    d.innerHTML = '<div class="action-head"><div class="action-title">' + title + '</div>' +
+      '<div class="action-sub">' + (sub || '') + '</div></div>';
+    return d;
+  }
+
+  var lastActionKey = '';
+
+  /* 操作パネルが新しく出たときだけ、画面内までスクロールする */
+  function revealActions() {
+    var key = state.phase + ':' + Engine.actor(state).idx;
+    if (key === lastActionKey) return;
+    lastActionKey = key;
+    var actor = Engine.actor(state);
+    if (!actor.isHuman || state.phase === 'place' || state.phase === 'gameover') return;
+    requestAnimationFrame(function () {
+      var r = el.actionBar.getBoundingClientRect();
+      if (r.bottom > global.innerHeight - 8) {
+        el.actionBar.scrollIntoView({ block: 'end', behavior: 'smooth' });
+      }
+    });
+  }
+
+  function renderActions() {
+    el.actionBar.innerHTML = '';
+    if (state.phase === 'gameover') { lastActionKey = ''; return; }
+
+    var actor = Engine.actor(state);
+    if (!actor.isHuman) {
+      var wait = card(actor.name + ' が考えています…', PHASE_TEXT[state.phase] || '');
+      el.actionBar.appendChild(wait);
+      lastActionKey = state.phase + ':' + actor.idx;
+      return;
+    }
+
+    if (state.phase === 'place') renderPlaceActions(actor);
+    else if (state.phase === 'found') renderFoundActions(actor);
+    else if (state.phase === 'survivor') renderSurvivorActions(actor);
+    else if (state.phase === 'buy') renderBuyActions(actor);
+    /* dispose はモーダルで扱う */
+    revealActions();
+  }
+
+  function renderPlaceActions(p) {
+    var legal = Engine.playableTiles(state, p);
+    var c = card('タイルを配置してください', '配置可能: ' + legal.length + ' 枚');
+    if (selectedTile != null) {
+      var a = Engine.analyze(state, selectedTile);
+      var desc = {
+        single: 'どのチェーンにも属さないタイルとして置きます',
+        found: '新しいホテルチェーンを設立します',
+        grow: a.chain ? R.chain(a.chain).jp + ' を拡大します' : '',
+        merge: '合併が発生します'
+      }[a.type] || '';
+      var foot = document.createElement('div');
+      foot.className = 'action-foot';
+      foot.innerHTML = '<div class="cart-summary">' + R.label(selectedTile) + ' — ' + desc + '</div>';
+      var btns = document.createElement('div');
+      btns.className = 'action-btns';
+      var ok = document.createElement('button');
+      ok.className = 'btn btn-primary';
+      ok.textContent = R.label(selectedTile) + ' に配置';
+      ok.addEventListener('click', function () { doPlace(selectedTile); });
+      var cancel = document.createElement('button');
+      cancel.className = 'btn';
+      cancel.textContent = '選び直す';
+      cancel.addEventListener('click', function () { selectedTile = null; render(); });
+      btns.appendChild(cancel); btns.appendChild(ok);
+      foot.appendChild(btns);
+      c.appendChild(foot);
+    }
+    el.actionBar.appendChild(c);
+  }
+
+  function renderFoundActions(p) {
+    var opts = state.pending.found.options;
+    var c = card('設立するホテルチェーンを選択', '設立者は無料で1株を受け取ります');
+    var box = document.createElement('div');
+    box.className = 'chain-choice';
+    opts.forEach(function (id, i) {
+      var ch = R.chain(id);
+      var b = document.createElement('button');
+      b.className = 'chain-btn';
+      b.style.setProperty('--c', ch.color);
+      b.style.setProperty('--d', ms(i * 60) + 'ms');
+      b.innerHTML = '<b>' + ch.jp + '</b><span>' + ['安価', '中価格', '高価格'][ch.tier] +
+        ' ・ 手持ち ' + p.shares[id] + '株</span>';
+      b.addEventListener('click', function () {
+        Engine.chooseFoundChain(state, id);
+        step();
+      });
+      box.appendChild(b);
+    });
+    c.appendChild(box);
+    el.actionBar.appendChild(c);
+  }
+
+  function renderSurvivorActions(p) {
+    var m = state.pending.merge;
+    var c = card('存続するチェーンを選択', '同じ大きさのチェーンが合併します。選ばれなかった方は消滅します');
+    var box = document.createElement('div');
+    box.className = 'chain-choice';
+    m.candidates.forEach(function (id, i) {
+      var ch = R.chain(id);
+      var b = document.createElement('button');
+      b.className = 'chain-btn';
+      b.style.setProperty('--c', ch.color);
+      b.style.setProperty('--d', ms(i * 60) + 'ms');
+      b.innerHTML = '<b>' + ch.jp + ' を存続</b><span>' + m.sizes[id] + 'マス ・ 手持ち ' +
+        p.shares[id] + '株</span>';
+      b.addEventListener('click', function () {
+        Engine.chooseSurvivor(state, id);
+        step();
+      });
+      box.appendChild(b);
+    });
+    c.appendChild(box);
+    el.actionBar.appendChild(c);
+  }
+
+  function cartCount() {
+    return R.CHAIN_IDS.reduce(function (n, id) { return n + (cart[id] || 0); }, 0);
+  }
+  function cartCost() {
+    var sz = Engine.sizes(state);
+    return R.CHAIN_IDS.reduce(function (n, id) {
+      return n + (cart[id] || 0) * R.priceOf(id, sz[id]);
+    }, 0);
+  }
+
+  function renderBuyActions(p) {
+    var opts = Engine.buyOptions(state);
+    var sub = state.pending && state.pending.noPlayable
+      ? '置けるタイルがなかったため、購入のみ行います'
+      : '1手番に最大3株まで購入できます';
+    var c = card('株を購入（所持金 ' + R.formatMoney(p.cash) + '）', sub);
+
+    if (!opts.length) {
+      var none = document.createElement('div');
+      none.className = 'cart-summary';
+      none.textContent = '購入できるチェーンがありません。';
+      c.appendChild(none);
+    } else {
+      var grid = document.createElement('div');
+      grid.className = 'buy-grid';
+      opts.forEach(function (o) {
+        var ch = R.chain(o.id);
+        var n = cart[o.id] || 0;
+        var item = document.createElement('div');
+        item.className = 'buy-item' + (n > 0 ? ' active' : '');
+        item.style.setProperty('--c', ch.color);
+        item.style.setProperty('--cd', ch.dark);
+        item.innerHTML =
+          '<div class="swatch">' + ch.abbr + '</div>' +
+          '<div class="meta"><b>' + ch.jp + '</b><span>' + R.formatMoney(o.price) +
+          ' ・ 残' + (o.left - n) + '株</span></div>';
+
+        var st = document.createElement('div');
+        st.className = 'stepper';
+        var minus = document.createElement('button'); minus.textContent = '−';
+        var qty = document.createElement('span'); qty.className = 'qty'; qty.textContent = n;
+        var plus = document.createElement('button'); plus.textContent = '＋';
+
+        minus.disabled = n === 0;
+        plus.disabled = n >= o.left || cartCount() >= R.MAX_BUY_PER_TURN ||
+          cartCost() + o.price > p.cash;
+
+        minus.addEventListener('click', function () {
+          cart[o.id] = Math.max(0, (cart[o.id] || 0) - 1);
+          Sound.tone(300, .06, 'sine', .04);
+          render();
+        });
+        plus.addEventListener('click', function () {
+          cart[o.id] = (cart[o.id] || 0) + 1;
+          Sound.stock();
+          render();
+        });
+        st.appendChild(minus); st.appendChild(qty); st.appendChild(plus);
+        item.appendChild(st);
+        grid.appendChild(item);
+      });
+      c.appendChild(grid);
+    }
+
+    var foot = document.createElement('div');
+    foot.className = 'action-foot';
+    foot.innerHTML = '<div class="cart-summary">選択 ' + cartCount() + ' / 3 株 ・ 合計 <b>' +
+      R.formatMoney(cartCost()) + '</b></div>';
+
+    var btns = document.createElement('div');
+    btns.className = 'action-btns';
+
+    if (Engine.canDeclareEnd(state)) {
+      var dec = document.createElement('button');
+      dec.className = 'btn' + (declareIntent ? ' btn-primary' : '');
+      dec.textContent = declareIntent ? '★ 終了を宣言する' : 'ゲーム終了を宣言';
+      dec.title = '条件を満たしたのでゲームを終わらせられます';
+      dec.addEventListener('click', function () { declareIntent = !declareIntent; render(); });
+      btns.appendChild(dec);
+    }
+
+    var pass = document.createElement('button');
+    pass.className = 'btn';
+    pass.textContent = '購入しない';
+    pass.addEventListener('click', function () { cart = {}; doBuy(); });
+    btns.appendChild(pass);
+
+    var buy = document.createElement('button');
+    buy.className = 'btn btn-primary';
+    buy.textContent = cartCount() ? '購入して手番終了' : '手番を終える';
+    buy.addEventListener('click', doBuy);
+    btns.appendChild(buy);
+
+    foot.appendChild(btns);
+    c.appendChild(foot);
+    el.actionBar.appendChild(c);
+  }
+
+  /* ------------------------------------------------------------------ *
+   * 株処分モーダル（人間用）
+   * ------------------------------------------------------------------ */
+  function showDisposeModal() {
+    var d = state.pending.dispose;
+    var p = Engine.actor(state);
+    var lim = Engine.disposalLimits(state, p.idx);
+    var ch = R.chain(d.defunct);
+    var surv = R.chain(d.survivor);
+    var sell = 0, trade = 0;
+
+    var m = document.createElement('div');
+    m.className = 'modal';
+    m.innerHTML =
+      '<h2>' + ch.jp + ' の株を処分</h2>' +
+      '<p class="sub">' + ch.jp + ' は ' + surv.jp + ' に吸収されました。' +
+      '保有株を「売却」「2株→' + surv.jp + '1株に交換」「そのまま保持」から選べます。</p>' +
+      '<div class="dispose-summary" style="--c:' + ch.color + '">' +
+        '<div class="big">' + lim.held + '株</div>' +
+        '<div><b>' + ch.jp + '</b><br><span style="font-size:12px;color:var(--text-dim)">' +
+        '売却額 ' + R.formatMoney(d.price) + ' / 株（' + d.size + 'マス時点）</span></div>' +
+      '</div>' +
+      '<div class="dispose-row" data-row="sell">' +
+        '<div class="rl"><b>売却</b><span>1株 ' + R.formatMoney(d.price) + ' で現金化</span></div>' +
+        '<div class="range-wrap"><input type="range" id="dSell" min="0" max="' + lim.maxSell + '" value="0">' +
+        '<b id="dSellN" style="width:34px;text-align:right">0</b></div>' +
+      '</div>' +
+      '<div class="dispose-row" data-row="trade">' +
+        '<div class="rl"><b>交換</b><span>2株 → ' + surv.jp + ' 1株（銀行在庫 ' +
+          state.bank[d.survivor] + '株）</span></div>' +
+        '<div class="range-wrap"><input type="range" id="dTrade" min="0" max="' + lim.maxTrade +
+        '" step="2" value="0"><b id="dTradeN" style="width:34px;text-align:right">0</b></div>' +
+      '</div>' +
+      '<div class="dispose-total" id="dTotal"></div>' +
+      '<div class="modal-foot">' +
+        '<button class="btn" id="dAllKeep">すべて保持</button>' +
+        '<button class="btn" id="dAllSell">すべて売却</button>' +
+        '<button class="btn btn-primary" id="dOk">決定</button>' +
+      '</div>';
+
+    openModal(m, true);
+
+    var sSell = m.querySelector('#dSell'), sTrade = m.querySelector('#dTrade');
+
+    function refresh() {
+      sell = +sSell.value; trade = +sTrade.value;
+      /* 合計が保有数を超えないように相互に制限する */
+      if (sell + trade > lim.held) {
+        if (document.activeElement === sSell) {
+          trade = Math.max(0, lim.held - sell); trade -= trade % 2; sTrade.value = trade;
+        } else {
+          sell = Math.max(0, lim.held - trade); sSell.value = sell;
+        }
+      }
+      m.querySelector('#dSellN').textContent = sell;
+      m.querySelector('#dTradeN').textContent = trade;
+      m.querySelector('[data-row="sell"]').classList.toggle('has', sell > 0);
+      m.querySelector('[data-row="trade"]').classList.toggle('has', trade > 0);
+      m.querySelector('#dTotal').innerHTML =
+        '現金 <b>+' + R.formatMoney(sell * d.price) + '</b> ・ ' +
+        surv.jp + ' <b>+' + (trade / 2) + '株</b> ・ 保持 ' + (lim.held - sell - trade) + '株';
+    }
+    sSell.addEventListener('input', refresh);
+    sTrade.addEventListener('input', refresh);
+    m.querySelector('#dAllSell').addEventListener('click', function () {
+      sSell.value = lim.held - trade; refresh();
+    });
+    m.querySelector('#dAllKeep').addEventListener('click', function () {
+      sSell.value = 0; sTrade.value = 0; refresh();
+    });
+    m.querySelector('#dOk').addEventListener('click', function () {
+      closeModal();
+      Engine.submitDisposal(state, { sell: sell, trade: trade });
+      step();
+    });
+    refresh();
+  }
+
+  /* ------------------------------------------------------------------ *
+   * モーダル基盤
+   * ------------------------------------------------------------------ */
+  function openModal(node, sticky) {
+    el.overlay.innerHTML = '';
+    el.overlay.appendChild(node);
+    el.overlay.hidden = false;
+    el.overlay.dataset.sticky = sticky ? '1' : '';
+  }
+  function closeModal() {
+    el.overlay.hidden = true;
+    el.overlay.innerHTML = '';
+  }
+  el.overlay.addEventListener('click', function (e) {
+    if (e.target === el.overlay && el.overlay.dataset.sticky !== '1') closeModal();
+  });
+
+  /* ------------------------------------------------------------------ *
+   * 演出キューの再生
+   * ------------------------------------------------------------------ */
+  /* g は再生開始時のゲーム。途中で「新しいゲーム」が始まったら中断する。 */
+  async function playFx(g) {
+    while (g.fx.length) {
+      if (state !== g) { g.fx.length = 0; return; }
+      var e = g.fx.shift();
+      await playOne(e, g);
+    }
+    if (state === g) syncBoard();
+  }
+
+  async function playOne(e, g) {
+    switch (e.t) {
+      case 'setup': {
+        for (var i = 0; i < e.tiles.length; i++) {
+          paintCell(e.tiles[i].tile, '.', 'anim-pop', 0);
+          Sound.place();
+          await sleep(130);
+        }
+        await sleep(200);
+        break;
+      }
+
+      case 'turn': {
+        Sound.turn();
+        renderPlayers();
+        renderStatus();
+        break;
+      }
+
+      case 'place': {
+        var p = g.players[e.player];
+        var target = cells[e.tile];
+        var src = p.isHuman
+          ? (el.hand.querySelector('[data-tile="' + e.tile + '"]') || el.hand)
+          : playerCardOf(e.player);
+        if (src) flyTile(rectOf(src), rectOf(target), R.label(e.tile));
+        await sleep(300);
+        paintCell(e.tile, '.', 'anim-pop', 0);
+        Sound.place();
+        ripple(e.tile, 'rgba(255,255,255,.7)');
+        await sleep(TIMING.place);
+        break;
+      }
+
+      case 'found': {
+        var ch = R.chain(e.chain);
+        Sound.found();
+        quake();
+        ripple(e.origin, ch.color);
+        glowBoard(e.origin, ch.color);
+        toast('<b>' + ch.jp + '</b> 設立！', 'chain big', ch.color);
+        var dur = paintGroup(e.tiles, e.chain, e.origin, 'anim-paint', 70);
+        bumpChainRow(e.chain);
+        renderChains();
+        await sleep(Math.max(TIMING.found, dur));
+        break;
+      }
+
+      case 'founder-share': {
+        var ch2 = R.chain(e.chain);
+        var to = playerCardOf(e.player);
+        var br = rectOf(el.board);
+        flyStock({ left: br.left + br.width / 2, top: br.top + br.height / 2, width: 0, height: 0 },
+          rectOf(to), ch2.color, ch2.dark, 0);
+        floatText(to, '設立者ボーナス +1株', 'gold');
+        Sound.stock();
+        await sleep(TIMING.stock);
+        renderPlayers();
+        break;
+      }
+
+      case 'grow': {
+        paintGroup(e.tiles, e.chain, e.origin, 'anim-pop', 60);
+        Sound.place();
+        bumpChainRow(e.chain);
+        renderChains();
+        await sleep(TIMING.small + e.tiles.length * 60);
+        break;
+      }
+
+      case 'merge-start': {
+        var sv = R.chain(e.survivor);
+        Sound.merge();
+        quake();
+        glowBoard(e.tile, sv.color);
+        ripple(e.tile, sv.color);
+        toast('合併発生 — <b>' + sv.jp + '</b> が ' +
+          e.defunct.map(function (d) { return R.chain(d).jp; }).join('・') + ' を吸収',
+          'chain big', sv.color);
+        paintGroup(e.joining, e.survivor, e.tile, 'anim-pop', 60);
+        await sleep(TIMING.merge);
+        break;
+      }
+
+      case 'bonus': {
+        var chB = R.chain(e.chain);
+        Sound.coin();
+        e.payouts.forEach(function (pay, i) {
+          var node = playerCardOf(pay.player);
+          setTimeout(function () {
+            floatText(node, (pay.kind === 'majority' ? '筆頭' : '第2位') + ' +' +
+              R.formatMoney(pay.amount), 'gold');
+            Sound.coin();
+          }, ms(i * 220));
+        });
+        toast(chB.jp + ' 消滅 — ボーナス支払い', 'chain', chB.color);
+        await sleep(TIMING.bonus + e.payouts.length * 200);
+        renderPlayers();
+        break;
+      }
+
+      case 'sell': {
+        var chS = R.chain(e.chain);
+        var node = playerCardOf(e.player);
+        for (var k = 0; k < Math.min(e.count, 6); k++) {
+          flyStock(rectOf(node), rectOf(el.chains), chS.color, chS.dark, k * 70);
+        }
+        floatText(node, '+' + R.formatMoney(e.amount), 'gain');
+        Sound.coin();
+        await sleep(TIMING.stock);
+        renderPlayers(); renderChains();
+        break;
+      }
+
+      case 'trade': {
+        var chT = R.chain(e.to);
+        var nodeT = playerCardOf(e.player);
+        for (var k2 = 0; k2 < e.got; k2++) {
+          flyStock(rectOf(el.chains), rectOf(nodeT), chT.color, chT.dark, k2 * 90);
+        }
+        floatText(nodeT, chT.jp + ' +' + e.got + '株', 'gold');
+        Sound.stock();
+        await sleep(TIMING.stock);
+        renderPlayers(); renderChains();
+        break;
+      }
+
+      case 'absorb': {
+        var chA = R.chain(e.chain);
+        Sound.sweep(600, 200, .4, .05);
+        paintGroup(e.tiles, e.chain, e.origin, 'anim-absorb', 45);
+        await sleep(TIMING.absorb + e.tiles.length * 45);
+        renderChains();
+        break;
+      }
+
+      case 'merge-end': {
+        bumpChainRow(e.chain);
+        renderChains();
+        await sleep(TIMING.small);
+        break;
+      }
+
+      case 'buy': {
+        var chBuy = R.chain(e.chain);
+        var nodeB = playerCardOf(e.player);
+        for (var k3 = 0; k3 < e.count; k3++) {
+          flyStock(rectOf(el.chains), rectOf(nodeB), chBuy.color, chBuy.dark, k3 * 110);
+        }
+        floatText(nodeB, '-' + R.formatMoney(e.cost), 'loss');
+        Sound.stock();
+        await sleep(TIMING.stock + e.count * 60);
+        renderPlayers(); renderChains();
+        break;
+      }
+
+      case 'safe': {
+        var chSafe = R.chain(e.chain);
+        Sound.safe();
+        toast('<b>' + chSafe.jp + '</b> が安全圏に到達 🔒', 'chain', chSafe.color);
+        await sleep(TIMING.small);
+        break;
+      }
+
+      case 'discard': {
+        toast('置けないタイル ' + e.tiles.length + ' 枚を交換', '');
+        await sleep(TIMING.small);
+        break;
+      }
+
+      case 'draw': {
+        renderHand();
+        await sleep(160);
+        break;
+      }
+
+      case 'declare-end': {
+        toast('<b>' + g.players[e.player].name + '</b> がゲーム終了を宣言！', 'big');
+        await sleep(700);
+        break;
+      }
+
+      case 'final-settle': {
+        toast('最終清算', 'big');
+        renderPlayers(); renderChains();
+        await sleep(700);
+        break;
+      }
+
+      case 'gameover': {
+        Sound.win();
+        confetti();
+        await sleep(500);
+        break;
+      }
+
+      default: break;
+    }
+    renderLog();
+  }
+
+  /* ------------------------------------------------------------------ *
+   * メインループ
+   * ------------------------------------------------------------------ */
+  async function step() {
+    if (busy) return;
+    busy = true;
+    selectedTile = null;
+    var mine = state; // このループが担当するゲーム
+    try {
+      while (state === mine) {
+        render();
+        await playFx(mine);
+        if (state !== mine) return;
+
+        if (mine.phase === 'gameover') { render(); await showResults(); break; }
+
+        var actor = Engine.actor(mine);
+        if (actor.isHuman) {
+          render();
+          if (mine.phase === 'dispose') showDisposeModal();
+          break;
+        }
+
+        render();
+        await sleep(TIMING.aiThink);
+        if (state !== mine) return;
+        await runAI(actor);
+      }
+    } catch (err) {
+      console.error(err);
+      toast('エラー: ' + err.message, 'big');
+    } finally {
+      /* 新しいゲームに切り替わっていたら busy はそちらが管理する */
+      if (state === mine) busy = false;
+    }
+    if (state === mine) render();
+  }
+
+  async function runAI(p) {
+    switch (state.phase) {
+      case 'place': {
+        var mine = state;
+        var t = AI.chooseTile(state, p);
+        if (t == null) { Engine.buy(state, {}); break; }
+        cells[t].classList.add('target');
+        await sleep(340);
+        if (state !== mine) return; // 新しいゲームが始まった
+        cells[t].classList.remove('target');
+        Engine.placeTile(state, t);
+        break;
+      }
+      case 'found': {
+        var id = AI.chooseFoundChain(state, p, state.pending.found.options);
+        Engine.chooseFoundChain(state, id);
+        break;
+      }
+      case 'survivor': {
+        var m = state.pending.merge;
+        var info = { chains: m.chains, sizes: m.sizes, lones: m.lones };
+        Engine.chooseSurvivor(state, AI.chooseSurvivor(state, p, info, m.candidates));
+        break;
+      }
+      case 'dispose': {
+        Engine.submitDisposal(state, AI.disposal(state, p));
+        break;
+      }
+      case 'buy': {
+        if (AI.shouldDeclareEnd(state, p)) Engine.declareEnd(state);
+        Engine.buy(state, AI.buyCart(state, p));
+        break;
+      }
+      default: throw new Error('unknown phase ' + state.phase);
+    }
+  }
+
+  /* ------------------------------------------------------------------ *
+   * 人間の操作
+   * ------------------------------------------------------------------ */
+  function onHandClick(tile) {
+    if (busy || state.phase !== 'place') return;
+    var actor = Engine.actor(state);
+    if (!actor.isHuman) return;
+    if (selectedTile === tile) { doPlace(tile); return; }
+    selectedTile = tile;
+    Sound.tone(520, .05, 'sine', .04);
+    render();
+  }
+
+  function onCellClick(ev) {
+    if (busy || state.phase !== 'place') return;
+    var actor = Engine.actor(state);
+    if (!actor.isHuman) return;
+    var i = +ev.currentTarget.dataset.i;
+    if (actor.tiles.indexOf(i) === -1) return;
+    if (!Engine.isPlayable(state, i)) { Sound.error(); return; }
+    doPlace(i);
+  }
+
+  function doPlace(tile) {
+    if (busy) return;
+    try {
+      Engine.placeTile(state, tile);
+      selectedTile = null;
+      step();
+    } catch (err) {
+      Sound.error();
+      toast(err.message, '');
+    }
+  }
+
+  function doBuy() {
+    if (busy) return;
+    try {
+      if (declareIntent && Engine.canDeclareEnd(state)) Engine.declareEnd(state);
+      declareIntent = false;
+      var c = cart; cart = {};
+      Engine.buy(state, c);
+      step();
+    } catch (err) {
+      Sound.error();
+      toast(err.message, '');
+    }
+  }
+
+  /* ------------------------------------------------------------------ *
+   * 全体描画
+   * ------------------------------------------------------------------ */
+  function render() {
+    if (!state) return;
+    renderStatus();
+    syncBoard();
+    decorateBoard();
+    renderHand();
+    renderPlayers();
+    renderChains();
+    renderLog();
+    renderActions();
+  }
+
+  /* ------------------------------------------------------------------ *
+   * 紙吹雪
+   * ------------------------------------------------------------------ */
+  function confetti() {
+    var cv = el.confetti;
+    cv.classList.add('on');
+    var ctx = cv.getContext('2d');
+    var dpr = Math.min(2, global.devicePixelRatio || 1);
+    function resize() {
+      cv.width = innerWidth * dpr; cv.height = innerHeight * dpr;
+      cv.style.width = innerWidth + 'px'; cv.style.height = innerHeight + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    resize();
+    var colors = R.CHAINS.map(function (c) { return c.color; }).concat(['#e9c46a', '#ffffff']);
+    var parts = [];
+    for (var i = 0; i < 160; i++) {
+      parts.push({
+        x: Math.random() * innerWidth,
+        y: -20 - Math.random() * innerHeight * .6,
+        w: 6 + Math.random() * 8,
+        h: 8 + Math.random() * 12,
+        vy: 1.8 + Math.random() * 3.4,
+        vx: (Math.random() - .5) * 2.2,
+        rot: Math.random() * Math.PI,
+        vr: (Math.random() - .5) * .28,
+        c: colors[(Math.random() * colors.length) | 0]
+      });
+    }
+    var start = performance.now();
+    (function frame(now) {
+      var t = now - start;
+      ctx.clearRect(0, 0, innerWidth, innerHeight);
+      parts.forEach(function (p) {
+        p.x += p.vx; p.y += p.vy; p.rot += p.vr;
+        p.vx += Math.sin((t + p.y) / 320) * .035;
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+        ctx.fillStyle = p.c;
+        ctx.globalAlpha = t > 4500 ? Math.max(0, 1 - (t - 4500) / 1500) : 1;
+        ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+        ctx.restore();
+      });
+      if (t < 6000) requestAnimationFrame(frame);
+      else { ctx.clearRect(0, 0, innerWidth, innerHeight); cv.classList.remove('on'); }
+    })(start);
+  }
+
+  /* ------------------------------------------------------------------ *
+   * 結果表示
+   * ------------------------------------------------------------------ */
+  async function showResults() {
+    await sleep(400);
+    var m = document.createElement('div');
+    m.className = 'modal';
+    var rows = state.results.map(function (r, i) {
+      var medal = ['🥇', '🥈', '🥉'][r.rank - 1] || r.rank;
+      return '<div class="result-row' + (r.rank === 1 ? ' first' : '') + '" style="--d:' + ms(i * 110) + 'ms">' +
+        '<div class="result-rank">' + medal + '</div>' +
+        '<div><div class="result-name">' + r.name + (r.isHuman ? '（あなた）' : '') + '</div>' +
+        '<div class="result-detail">ボーナス ' + R.formatMoney(r.bonus) +
+        ' ・ 株清算 ' + R.formatMoney(r.stock) + '</div></div>' +
+        '<div class="result-cash">' + R.formatMoney(r.cash) + '</div></div>';
+    }).join('');
+    m.innerHTML =
+      '<h2>🏆 最終結果</h2>' +
+      '<p class="sub">全チェーンのボーナスと保有株を清算しました。</p>' +
+      '<div class="result-list">' + rows + '</div>' +
+      '<div class="modal-foot">' +
+        '<button class="btn" id="rClose">盤面を見る</button>' +
+        '<button class="btn btn-primary" id="rAgain">もう一度プレイ</button>' +
+      '</div>';
+    openModal(m, false);
+    m.querySelector('#rClose').addEventListener('click', closeModal);
+    m.querySelector('#rAgain').addEventListener('click', function () { closeModal(); showStartModal(); });
+  }
+
+  /* ------------------------------------------------------------------ *
+   * スタート画面
+   * ------------------------------------------------------------------ */
+  var CPU_NAMES = ['アイダ', 'ボリス', 'カルロ', 'ダイアナ', 'エルザ'];
+  var CPU_PERSONAS = ['aggressive', 'cautious', 'tycoon', 'balanced', 'aggressive'];
+
+  function showStartModal() {
+    var opponents = 3, watch = false, name = 'あなた';
+
+    var m = document.createElement('div');
+    m.className = 'modal';
+    m.innerHTML =
+      '<h2>ACQUIRE</h2>' +
+      '<p class="sub">ホテルチェーンを設立し、株を買い、合併ボーナスで資産を増やす名作ボードゲーム。' +
+      'ゲーム終了時にもっとも資産の多いプレイヤーが勝者です。</p>' +
+      '<div class="field"><label>プレイヤー名</label>' +
+        '<input type="text" id="sName" value="あなた" maxlength="10"></div>' +
+      '<div class="field"><label>CPU の人数</label><div class="seg" id="sOpp">' +
+        [1, 2, 3, 4, 5].map(function (n) {
+          return '<button data-n="' + n + '"' + (n === 3 ? ' class="on"' : '') + '>' + n + '人</button>';
+        }).join('') + '</div></div>' +
+      '<div class="field"><label>モード</label><div class="seg" id="sMode">' +
+        '<button data-w="0" class="on">自分でプレイ</button>' +
+        '<button data-w="1">CPU 同士を観戦</button></div></div>' +
+      '<div class="field"><label>演出スピード</label><div class="seg" id="sSpeed">' +
+        '<button data-s="1.4">ゆっくり</button>' +
+        '<button data-s="1" class="on">ふつう</button>' +
+        '<button data-s="0.55">はやい</button></div></div>' +
+      '<div class="modal-foot">' +
+        (state ? '<button class="btn" id="sCancel">中断してもどる</button>' : '') +
+        '<button class="btn" id="sRules">ルールを読む</button>' +
+        '<button class="btn btn-primary" id="sStart">ゲーム開始</button>' +
+      '</div>';
+    openModal(m, true);
+    if (state) {
+      m.querySelector('#sCancel').addEventListener('click', function () {
+        closeModal();
+        step(); // 進行中のゲームを再開する
+      });
+    }
+
+    function segHandler(container, fn) {
+      container.addEventListener('click', function (e) {
+        var b = e.target.closest('button'); if (!b) return;
+        Array.prototype.forEach.call(container.children, function (x) { x.classList.remove('on'); });
+        b.classList.add('on');
+        fn(b);
+        Sound.tone(600, .05, 'sine', .04);
+      });
+    }
+    segHandler(m.querySelector('#sOpp'), function (b) { opponents = +b.dataset.n; });
+    segHandler(m.querySelector('#sMode'), function (b) { watch = b.dataset.w === '1'; });
+    segHandler(m.querySelector('#sSpeed'), function (b) { speed = +b.dataset.s; });
+
+    m.querySelector('#sRules').addEventListener('click', function () { showRulesModal(showStartModal); });
+    m.querySelector('#sStart').addEventListener('click', function () {
+      Sound.ensure();
+      name = (m.querySelector('#sName').value || 'あなた').trim().slice(0, 10);
+      closeModal();
+      startGame(name, opponents, watch);
+    });
+  }
+
+  function startGame(name, opponents, watch) {
+    var players = [];
+    if (!watch) players.push({ name: name, isHuman: true });
+    var count = watch ? Math.max(2, opponents + 1) : opponents;
+    for (var i = 0; i < count; i++) {
+      players.push({ name: CPU_NAMES[i % CPU_NAMES.length], personality: CPU_PERSONAS[i % CPU_PERSONAS.length] });
+    }
+
+    view = new Array(R.CELLS).fill(null);
+    prevCash = {}; prevShares = {}; lastLogCount = 0; lastActorIdx = -1;
+    handSignature = ''; selectedTile = null; cart = {}; declareIntent = false;
+    el.players.innerHTML = ''; el.log.innerHTML = '';
+    el.toasts.innerHTML = '';
+    buildBoard();
+
+    /* 進行中のループは state が入れ替わった時点で自分から抜ける */
+    state = Engine.newGame({ players: players });
+    busy = false;
+    global.AQ.state = state; // デバッグ用
+    render();
+    step();
+  }
+
+  /* ------------------------------------------------------------------ *
+   * ルール画面
+   * ------------------------------------------------------------------ */
+  function showRulesModal(onClose) {
+    var priceRows = R.PRICE_ROWS.map(function (row) {
+      var sample = row.label === '41+' ? 41 : parseInt(row.label, 10) || 6;
+      return '<tr><td>' + row.label + '</td>' +
+        [0, 1, 2].map(function (tier) {
+          var id = R.CHAIN_IDS.filter(function (x) { return R.chain(x).tier === tier; })[0];
+          return '<td>' + R.formatMoney(R.priceOf(id, sample)) + '</td>';
+        }).join('') + '</tr>';
+    }).join('');
+
+    var m = document.createElement('div');
+    m.className = 'modal';
+    m.innerHTML =
+      '<h2>ルール</h2>' +
+      '<div class="rules-body">' +
+      '<h3>1手番の流れ</h3><ul>' +
+        '<li>手札から1枚タイルを盤面に置く</li>' +
+        '<li>設立・拡大・合併の処理を行う</li>' +
+        '<li>盤上のチェーンの株を最大3株まで購入する</li>' +
+        '<li>手札を6枚に補充して次の人へ</li>' +
+      '</ul>' +
+      '<h3>チェーンの設立</h3><ul>' +
+        '<li>どのチェーンにも属さないタイルに隣接して置くと新チェーンを設立できる</li>' +
+        '<li>設立者は無料で1株もらえる</li>' +
+        '<li>7つ全てのチェーンが盤上にある間は設立できない（そのタイルは置けない）</li>' +
+      '</ul>' +
+      '<h3>合併</h3><ul>' +
+        '<li>2つ以上のチェーンをつなぐタイルを置くと合併が発生する</li>' +
+        '<li>大きい方が存続し、小さい方は消滅する（同数なら置いた人が選ぶ）</li>' +
+        '<li>消滅チェーンの筆頭株主に株価×10、第2位株主に株価×5のボーナス</li>' +
+        '<li>同数で並んだ場合はボーナスを分割（100ドル単位で切り上げ）</li>' +
+        '<li>消滅チェーンの株は「売却」「2株→存続1株に交換」「保持」から選ぶ</li>' +
+        '<li>11マス以上のチェーンは安全圏となり吸収されない。安全圏同士をつなぐタイルは永久に配置不可</li>' +
+      '</ul>' +
+      '<h3>ゲーム終了</h3><ul>' +
+        '<li>41マス以上のチェーンができる、または盤上の全チェーンが安全圏になったとき、手番のプレイヤーは終了を宣言できる</li>' +
+        '<li>全チェーンのボーナスを支払い、全株を時価で清算。最も所持金が多い人の勝ち</li>' +
+      '</ul>' +
+      '<h3>株価表（1株あたり）</h3>' +
+      '<table class="price-table"><thead><tr><th>マス数</th><th>安価<br>ルクソール/タワー</th>' +
+      '<th>中価格<br>アメリカン他</th><th>高価格<br>インペリアル他</th></tr></thead>' +
+      '<tbody>' + priceRows + '</tbody></table>' +
+      '<p style="margin-top:14px;font-size:11.5px;color:var(--text-faint)">' +
+      '筆頭株主ボーナス = 株価 × 10 / 第2位株主ボーナス = 株価 × 5</p>' +
+      '</div>' +
+      '<div class="modal-foot"><button class="btn btn-primary" id="ruClose">閉じる</button></div>';
+    openModal(m, true);
+    m.querySelector('#ruClose').addEventListener('click', function () {
+      closeModal();
+      if (onClose) onClose();
+    });
+  }
+
+  /* ------------------------------------------------------------------ *
+   * 起動
+   * ------------------------------------------------------------------ */
+  el.btnNew.addEventListener('click', function () { showStartModal(); });
+  el.btnRules.addEventListener('click', function () { showRulesModal(null); });
+  el.btnSound.addEventListener('click', function () {
+    Sound.enabled = !Sound.enabled;
+    el.btnSound.setAttribute('aria-pressed', String(Sound.enabled));
+    if (Sound.enabled) { Sound.ensure(); Sound.tone(700, .1, 'sine', .05); }
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && !el.overlay.hidden && el.overlay.dataset.sticky !== '1') closeModal();
+  });
+  global.addEventListener('resize', function () {
+    if (el.confetti.classList.contains('on')) {
+      el.confetti.width = innerWidth; el.confetti.height = innerHeight;
+    }
+  });
+
+  /* 外から触れる最小限の口（デバッグ・自動テスト用） */
+  global.AQ.ui = {
+    setSpeed: function (v) { speed = v; },
+    getSpeed: function () { return speed; },
+    newGame: startGame,
+    isBusy: function () { return busy; }
+  };
+
+  buildBoard();
+  showStartModal();
+
+})(window);
+</script>

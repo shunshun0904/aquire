@@ -1,0 +1,16 @@
+{
+  "name": "acquire",
+  "version": "1.0.0",
+  "description": "ボードゲーム「アクワイア」のブラウザ版（ルールベース CPU 付き）",
+  "private": true,
+  "scripts": {
+    "build": "node build.js",
+    "test": "node test/sim.js 300",
+    "test:browser": "node test/browser.js",
+    "bench": "node test/bench.js 400 v2,v1,random,v2",
+    "serve": "node serve.js"
+  },
+  "devDependencies": {
+    "playwright": "^1.49.1"
+  }
+}

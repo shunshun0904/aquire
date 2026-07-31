@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ACQUIRE — ホテルチェーン買収ゲーム</title>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<div id="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">A</span>
+      <div class="brand-text">
+        <h1>ACQUIRE</h1>
+        <p>ホテルチェーン買収ゲーム</p>
+      </div>
+    </div>
+
+    <div class="status" id="status">
+      <div class="status-turn" id="statusTurn">—</div>
+      <div class="status-phase" id="statusPhase">準備中</div>
+    </div>
+
+    <div class="topbar-actions">
+      <button class="icon-btn" id="btnRules" title="ルール">?</button>
+      <button class="icon-btn" id="btnSound" title="サウンド" aria-pressed="true">♪</button>
+      <button class="btn btn-ghost" id="btnNew">新しいゲーム</button>
+    </div>
+  </header>
+
+  <main class="layout">
+
+    <section class="board-col">
+      <div class="board-shell">
+        <div class="board-glow" id="boardGlow"></div>
+        <div class="board" id="board" role="grid" aria-label="ゲームボード"></div>
+        <div class="fx-layer" id="fxLayer" aria-hidden="true"></div>
+      </div>
+
+      <div class="hand-shell">
+        <div class="hand-head">
+          <span class="hand-title" id="handOwner">あなたの手札</span>
+          <span class="hand-hint" id="handHint">タイルを選んで配置してください</span>
+        </div>
+        <div class="hand" id="hand"></div>
+      </div>
+
+      <div class="action-bar" id="actionBar"></div>
+    </section>
+
+    <aside class="side-col">
+      <div class="panel players-panel">
+        <h2 class="panel-title">プレイヤー</h2>
+        <div class="players" id="players"></div>
+      </div>
+
+      <div class="panel">
+        <h2 class="panel-title">ホテルチェーン</h2>
+        <div class="chain-table" id="chains"></div>
+      </div>
+
+      <div class="panel log-panel">
+        <h2 class="panel-title">ログ</h2>
+        <div class="log" id="log"></div>
+      </div>
+    </aside>
+
+  </main>
+</div>
+
+<div class="overlay" id="overlay" hidden></div>
+<canvas class="confetti" id="confetti" aria-hidden="true"></canvas>
+<div class="toast-stack" id="toasts" aria-live="polite"></div>
+
+<script src="js/rules.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/ui.js"></script>
+</body>
+</html>
