@@ -723,6 +723,47 @@ input[type="range"] { width: 150px; accent-color: var(--gold); }
   }
 }
 </style>
+
+<!-- ── アクセス解析 ───────────────────────────────────────────────
+     PLAYBENCH（https://shunshun0904.github.io/playbench/）と同じ測定ID。
+     どのゲームが遊ばれているかを、1つのプロパティでパスごとに見るため。
+
+     ここがこのファイル唯一の外部読み込みで、行き先は
+     https://www.googletagmanager.com/gtag/js だけ。ゲーム本体は
+     いままで通り何も読み込まない。
+
+     読み込まない条件が3つある。
+       1. file:// で開いたとき ── 1枚で配れる作りを壊さないため
+       2. ブラウザが追跡拒否を出しているとき（GPC / DNT）
+       3. localStorage の pb-analytics が off のとき
+          6サイトとも同一オリジンなので、PLAYBENCH の奥付で「止める」を
+          押せば、このゲームでも止まる
+     ────────────────────────────────────────────────────────── -->
+<script>
+(function () {
+  var ID = 'G-L76Z1LVWX6';
+  if (!/^https?:$/.test(location.protocol)) return;
+
+  var say = null;
+  try { say = localStorage.getItem('pb-analytics'); } catch (e) {}
+  if (say === 'off') return;
+  if (say !== 'on') {
+    var d = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+    if (navigator.globalPrivacyControl || d === '1' || d === 'yes') return;
+  }
+
+  window.dataLayer = window.dataLayer || [];
+  window.gtag = function () { window.dataLayer.push(arguments); };
+  window.gtag('js', new Date());
+  window.gtag('config', ID);
+
+  var s = document.createElement('script');
+  s.async = true;
+  s.src = 'https://www.googletagmanager.com/gtag/js?id=' + ID;
+  document.head.appendChild(s);
+})();
+</script>
+
 </head>
 <body>
 

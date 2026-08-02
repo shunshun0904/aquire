@@ -132,3 +132,20 @@ npm run test:browser  # 実ブラウザ(Chromium)での操作確認
 「アクワイア」は Sid Sackson により設計され、現在は Hasbro が権利を保有する
 ボードゲームです。本リポジトリはルールを学習・実装した非公式のファンメイド
 実装であり、商標・アートワークは含みません。
+
+## アクセス解析
+
+GitHub Pages で配信しているときだけ、Google アナリティクスを読み込みます。
+[PLAYBENCH](https://shunshun0904.github.io/playbench/) と同じ測定IDで、
+**どのゲームが遊ばれているか**を1つのプロパティで見るためのものです。
+集めるのは読まれたページと、おおまかな地域・機器の別だけです。
+
+読み込まない条件が3つあります。
+
+1. `index.html` を**ファイルとして開いたとき**（`file://`）── 何も読み込みません
+2. ブラウザが**追跡拒否**を出しているとき（Global Privacy Control / DNT）
+3. PLAYBENCH の奥付で**「止める」**を押したとき
+   ── 6サイトとも同一オリジンなので、その設定はここにも効きます
+
+該当箇所は `index.html` の `<head>` にある `<script>` 1つだけで、
+行き先は `https://www.googletagmanager.com/gtag/js` のみです。
